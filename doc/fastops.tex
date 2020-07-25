@@ -1,0 +1,403 @@
+\documentclass[10pt]{article}
+
+\usepackage{amsmath}
+
+\begin{document}
+
+\section{Fast image pre-processing}
+
+The objective of the pre-processing is to provide data whose values
+are proportional to the incident flux and their respective precision.
+This can be time-consuming ($\sim 5 - 7$ operations per pixel are
+needed) and, at least for real-time applications, it is desirable to
+have the fastest pre-processing code.
+
+Our strategy: implement several variants (as discussed below) and tune
+the compiler options to find the best combination of compiler (GCC or
+CLang), optimization options and code variant.  Once the best
+combination has been identified, one may consider vectorizing the code
+by hand (using intrinsics functions or software like the Vector Class
+Library).  Note that the results depend on the compiler brand and
+version but also on the processor.  The tests must therefore be easy
+to reproduce on different architectures and for different settings.
+
+To remain quite general, the assumed prototype of the pre-processing
+function is:
+\begin{verbatim}
+void PREPROCESSING(INT width, INT height, INT stride,
+                   FLOAT* restrict wgt,
+                   FLOAT* restrict dat,
+                   PIXEL const* restrict img,
+                   FLOAT const* restrict a,
+                   FLOAT const* restrict b,
+                   FLOAT const* restrict q,
+                   FLOAT const* restrict r);
+\end{verbatim}
+where:
+\begin{itemize}
+\item \verb+INT+ is the integer type for indexation (e.g.,
+  \verb+size_t+).  As expected from what others have written on the
+  subject (e.g., Agner Fog, in a nutshell: ``\emph{index computations
+    in loops involving vectorized floating-point operations are almost
+    free with modern processors and compilers with optimization}''),
+  using 32-bit or 64-bit signed/unsigned integers for \verb+INT+ did
+  not change our results on a modern 64-bit processor.
+
+\item \verb+PIXEL+ is the pixel type of the acquired image \verb+img+.
+
+\item \verb+FLOAT+ is the floating-point type for the preprocessed
+  data.  Single precision (C \verb+float+ type) should be preferred
+  for faster computations (single/double precision makes no
+  differences for scalar operations on modern processors but
+  vectorized, SIMD, instructions can deal with twice as many values in
+  single precision compared to double precision).
+
+\item \verb+width+ and \verb+height+ are the dimensions of the arrays,
+  \verb+stride+ is the number of pixel to the next image row in the
+  acquired image \verb+img+, other arrays are assumed to be stored
+  contiguously. To simplify the pseudo-code, we assume the following
+  macros have been defined to account for the considered colum-major
+  order and strides (they can be changed to account for other
+  conventions and the index expresions should be optimized out by any
+  good compiler):
+  \begin{verbatim}
+  #define img(x,y)  img[(x) + (y)*stride]
+  #define wgt(x,y)  wgt[(x) + (y)*width]
+  #define dat(x,y)  dat[(x) + (y)*width]
+  #define a(x,y)      a[(x) + (y)*width]
+  #define b(x,y)      b[(x) + (y)*width]
+  #define q(x,y)      q[(x) + (y)*width]
+  #define r(x,y)      r[(x) + (y)*width]
+  \end{verbatim}
+
+\item \verb+dat+ and \verb+wgt+ are output arrays to store the data
+  and their respective weights.
+
+\item \verb+a+ and \verb+b+ are input arrays specifying the pixel
+  correction terms which are used as follows:
+  \begin{equation}
+    \mathtt{dat}(x,y) = (\mathtt{img}(x,y) - \mathtt{b}(x,y))
+    \times\mathtt{a}(x,y)
+    \label{eq:affine-correction}
+  \end{equation}
+  where the bias $\mathtt{b}(x,y)$ is in the same units as the
+  acquirred image $\mathtt{img}(x,y)$; using another definition for
+  $\mathtt{b}(x,y)$ and to exploit \emph{fused multiply-add} (FMA)
+  instructions of the processor, we also consider using the following
+  formula:
+  \begin{equation}
+    \mathtt{dat}(x,y) = \mathtt{img}(x,y)\times\mathtt{a}(x,y)
+    + \mathtt{b}(x,y)
+    \label{eq:affine-correction-fma}
+  \end{equation}
+
+\item \verb+q+ and \verb+r+ are input arrays providing the terms to
+  compute the weights according to the formula:
+  \begin{equation}
+    \mathtt{wgt}(x,y) = \frac{\mathtt{q}(x,y)}{
+      \max\{0, \mathtt{dat}(x,y)\} + \mathtt{r}(x,y)}
+    \label{eq:weights}
+  \end{equation}
+  where $\max\{0,u\}$ is implemented by a fast in-line function
+  $\mathtt{nonnegative}(u)$ which avoids branching; for instance:
+  \begin{verbatim}
+  static inline float nonnegative_f(float x) {
+      float zero = 0.0f;
+      return (x > zero ? x : zero);
+  }
+  static inline double nonnegative_d(double x) {
+      double zero = 0.0;
+      return (x > zero ? x : zero);
+  }
+  #define nonnegative(x) \
+      _Generic((x), float: nonnegative_f, double: nonnegative_d)(x)
+  \end{verbatim}
+  Another possibility is to compute the weights as:
+  \begin{equation}
+    \mathtt{wgt}(x,y) = \frac{\mathtt{q}(x,y)}{
+    \max\{\mathtt{r}(x,y) + \mathtt{dat}(x,y), \mathtt{r}(x,y)\}}
+    \label{eq:weights-2}
+  \end{equation}
+
+\item The \verb+restrict+ keyword is used to let the compiler assume
+  that there is no aliasing (it is the caller's reponsibility to
+  ensure that this holds).
+\end{itemize}
+
+There are 3 kinds of operation to consider:
+\begin{enumerate}
+\item convert pixel values (integers) to floating-point;
+\item apply pixel correction formula~\eqref{eq:affine-correction} or
+  \eqref{eq:affine-correction-fma};
+\item compute the weights according to formula~\eqref{eq:weights} or
+  \eqref{eq:weights-2}.
+\end{enumerate}
+The efficiency of vectorized instructions for converting integers to
+floats strongly depend on the considered types and on the available set
+of instructions.
+
+It may seem that for given input and output types (\verb+PIXEL+ and
+\verb+FLOAT+), there are only 4 possibilities depending on which
+variants of the pixel correction and weights formula are chosen.
+Another flexibility is whether the operations are all applied to a
+pixel before processing the next one or are each applied to a group of
+pixels.  The former is summarized by the following version of the code:
+\begin{verbatim}
+    // Version 1.  Apply all operations to each pixel in turn.
+    for (INT y = 0; y < height; ++y) {
+        for (INT x = 0; x < width; ++x) {
+            FLOAT val = apply_correction((FLOAT)img(x,y), a(x,y), b(x,y));
+            dat(x,y) = val;
+            wgt(x,y) = compute_weight(val, q(x,y), r(x,y));
+        }
+    }
+\end{verbatim}
+where the macros or inline functions \verb+apply_correction+ and
+\verb+compute_weight+ implement one of the processing formula.
+
+\begin{verbatim}
+static inline FLOAT apply_correction_v1(FLOAT u, FLOAT a, FLOAT b) {
+    return (u - b)*a;
+}
+static inline FLOAT apply_correction_v2(FLOAT u, FLOAT a, FLOAT b) {
+    return u*a + b; // candidate for FMA instruction
+}
+static inline FLOAT compute_weight_v1(FLOAT u, FLOAT q, FLOAT r) {
+    FLOAT const zero = 0;
+    return q/((u > zero ? u : zero) + r);
+}
+static inline FLOAT compute_weight_v2(FLOAT u, FLOAT q, FLOAT r) {
+    FLOAT v = u + r;
+    return q/(v > r ? v : r);
+}
+\end{verbatim}
+
+It may be advantageous to perform a given operation for a group of
+pixels to avoid cache misses and to benefit from better pipelining of
+the instructions.  The other 6 possibilities are listed in
+Appendix~\ref{sec:split-pre-processing}.  Combining all possibilities,
+there are $4\times7 = 28$ possible variants of the code for
+pre-processing images.
+
+Minimum times (in microseconds) measured for \verb+niau+ with
+$\mathtt{width} = 380$, $\mathtt{height} = 380$ and $\mathtt{stride} =
+400$:
+
+% \CLANG{func}{min}{max}{avg}{std}{units}
+\newcommand{\CLANG}[6]{CLang (AVX2) & #1 & $#2$ \\}
+% \GNUCC{func}{min}{max}{avg}{std}{units}
+\newcommand{\GNUCC}[6]{GCC (AVX2) & #1 & $#2$ \\}
+
+{\small
+\begin{tabular}{rcc}
+  \hline
+  Compiler (instr. set) & Variant & Min. time \\
+  \hline
+  \hline
+  \CLANG{11}{56.970}{ 74.530}{ 58.058186}{ 1.605700}{µs}
+  \CLANG{12}{53.110}{ 81.671}{ 54.620167}{ 1.720122}{µs}
+  \CLANG{13}{59.351}{140.521}{ 61.005435}{ 3.051151}{µs}
+  \CLANG{14}{81.251}{178.312}{ 85.348006}{10.007648}{µs}
+  \CLANG{15}{53.741}{ 87.721}{ 55.202642}{ 2.355055}{µs}
+  \CLANG{16}{56.170}{ 96.170}{ 57.526538}{ 2.233562}{µs}
+  \CLANG{17}{63.581}{105.000}{ 64.952477}{ 2.190579}{µs}
+  \hline
+  \CLANG{21}{53.171}{ 87.361}{ 54.481988}{ 2.307893}{µs}
+  \CLANG{22}{52.381}{ 92.280}{ 54.173267}{ 2.169050}{µs}
+  \CLANG{23}{56.631}{ 97.441}{ 58.096858}{ 2.050985}{µs}
+  \CLANG{24}{66.371}{145.831}{ 68.360545}{ 4.243564}{µs}
+  \CLANG{25}{52.070}{283.432}{ 57.394765}{ 9.062245}{µs}
+  \CLANG{26}{53.740}{ 88.871}{ 55.447496}{ 1.946086}{µs}
+  \CLANG{27}{63.930}{100.861}{ 65.434994}{ 2.572050}{µs}
+  \hline
+  \CLANG{31}{57.100}{ 89.121}{ 58.416060}{ 1.986981}{µs}
+  \CLANG{32}{54.430}{ 72.571}{ 56.579088}{ 1.769608}{µs}
+  \CLANG{33}{58.191}{169.201}{ 60.013186}{ 3.250281}{µs}
+  \CLANG{34}{66.820}{ 92.631}{ 68.123130}{ 1.921881}{µs}
+  \CLANG{35}{52.610}{ 86.950}{ 54.536280}{ 2.711644}{µs}
+  \CLANG{36}{55.920}{ 92.291}{ 57.693083}{ 2.388796}{µs}
+  \CLANG{37}{63.300}{182.862}{ 65.823999}{ 4.582080}{µs}
+  \hline
+  \CLANG{41}{53.330}{ 73.971}{ 55.054576}{ 1.705375}{µs}
+  \CLANG{42}{65.540}{153.911}{ 69.425782}{ 9.363764}{µs}
+  \CLANG{43}{57.410}{ 74.531}{ 58.776598}{ 1.568815}{µs}
+  \CLANG{44}{66.430}{179.071}{ 76.198362}{13.123401}{µs}
+  \CLANG{45}{51.670}{229.022}{ 60.313979}{10.400270}{µs}
+  \CLANG{46}{55.120}{ 86.741}{ 56.904224}{ 1.945661}{µs}
+  \CLANG{47}{62.621}{ 82.680}{ 64.097832}{ 1.729211}{µs}
+  \hline
+\end{tabular}
+\begin{tabular}{rcc}
+  \hline
+  Compiler (instr. set) & Variant & Min. time \\
+  \hline
+  \hline
+  \GNUCC{11}{  77.041}{ 226.231}{ 86.575946}{16.793423}{µs}
+  \GNUCC{12}{  82.000}{ 155.871}{ 84.398167}{ 4.693786}{µs}
+  \GNUCC{13}{  88.841}{ 235.132}{ 91.888392}{ 5.530952}{µs}
+  \GNUCC{14}{  95.631}{ 108.971}{ 97.598377}{ 1.984801}{µs}
+  \GNUCC{15}{  76.570}{ 119.111}{ 78.358241}{ 3.038277}{µs}
+  \GNUCC{16}{  85.621}{ 126.381}{ 88.861668}{ 5.500124}{µs}
+  \GNUCC{17}{  89.731}{ 338.433}{ 92.428650}{ 5.443398}{µs}
+  \hline
+  \GNUCC{21}{  75.551}{ 202.081}{ 78.376814}{ 5.953618}{µs}
+  \GNUCC{22}{  79.580}{  97.511}{ 81.202480}{ 1.775103}{µs}
+  \GNUCC{23}{  86.210}{ 121.861}{ 88.116059}{ 2.160855}{µs}
+  \GNUCC{24}{  93.270}{ 278.442}{ 97.339100}{ 7.174303}{µs}
+  \GNUCC{25}{  77.111}{ 320.342}{ 88.242220}{12.914786}{µs}
+  \GNUCC{26}{  84.860}{ 195.262}{ 87.793884}{ 5.403702}{µs}
+  \GNUCC{27}{  90.411}{ 137.171}{ 92.016684}{ 1.993308}{µs}
+  \hline
+  \GNUCC{31}{  74.910}{ 139.421}{ 76.976665}{ 2.730088}{µs}
+  \GNUCC{32}{  81.000}{ 224.232}{102.370571}{13.946480}{µs}
+  \GNUCC{33}{  90.591}{ 267.332}{ 96.051259}{11.169465}{µs}
+  \GNUCC{34}{  94.941}{ 170.371}{ 97.205497}{ 3.213725}{µs}
+  \GNUCC{35}{  80.531}{ 103.271}{ 81.894702}{ 1.863712}{µs}
+  \GNUCC{36}{  86.521}{ 136.181}{ 88.580517}{ 3.045327}{µs}
+  \GNUCC{37}{  91.321}{ 234.212}{ 94.426342}{ 6.659262}{µs}
+  \hline
+  \GNUCC{41}{  71.531}{ 159.252}{ 74.088624}{ 5.326842}{µs}
+  \GNUCC{42}{  95.580}{ 211.052}{100.368879}{12.620478}{µs}
+  \GNUCC{43}{  88.490}{ 133.591}{ 90.390562}{ 2.380617}{µs}
+  \GNUCC{44}{  94.511}{ 140.811}{ 96.525544}{ 2.188096}{µs}
+  \GNUCC{45}{  79.471}{ 124.901}{ 80.739104}{ 1.922186}{µs}
+  \GNUCC{46}{  85.511}{ 124.211}{ 87.588812}{ 3.054086}{µs}
+  \GNUCC{47}{  91.700}{ 145.671}{ 93.715253}{ 2.316825}{µs}
+  \hline
+\end{tabular}
+}
+
+The first digit in the Variant column indicates the formulae used to
+apply the pixel correction and to compute the weights:
+\begin{itemize}
+\item[1 =] formulae~\eqref{eq:affine-correction} and \eqref{eq:weights};
+\item[2 =] formulae~\eqref{eq:affine-correction-fma} and \eqref{eq:weights};
+\item[3 =] formulae~\eqref{eq:affine-correction} and \eqref{eq:weights-2};
+\item[4 =] formulae~\eqref{eq:affine-correction-fma} and \eqref{eq:weights-2};
+\end{itemize}
+The second digit is the loop splitting variant (see
+Appendix~\ref{sec:split-pre-processing}).  A bout 20\,ns should be
+subtarcted to the measured time to account the calls to
+\verb+clock_gettime+.
+
+First conclusions: (1) These times are much shorter than what has been
+previously measured with Julia (about 170 microseconds). (2) CLang
+yields a better optimzed code than GCC (this can be seen in the
+assembler code) which is about 33\,\% faster.  I suspect that is due
+to the inability of GCC to unroll vectorized loops.  (4) The 2nd and
+5th strategies for loop splitting work the best for CLang, the 1st or
+the 5th work the best for GCC. (4) All these results have to be
+reproduced on the RTC (\verb+ko+).
+
+\appendix
+\section{Splitting of the pre-processing operations}
+\label{sec:split-pre-processing}
+
+We first consider performing part of the pre-processing operations
+to rows of pixels.  There are 3 possibilities.
+\begin{verbatim}
+    // Version 2.  Convert and apply correction to a row of pixels,
+    // then compute weights for this row of pixels.
+    for (INT y = 0; y < height; ++y) {
+        for (INT x = 0; x < width; ++x) {
+            dat(x,y) = apply_correction((FLOAT)img(x,y), a(x,y), b(x,y));
+        }
+        for (INT x = 0; x < width; ++x) {
+            wgt(x,y) = compute_weight(dat(x,y), q(x,y), r(x,y));
+        }
+    }
+\end{verbatim}
+
+\begin{verbatim}
+    // Version 3.  Convert a row of pixels, then apply correction
+    // and compute weights for this row of pixels.
+    for (INT y = 0; y < height; ++y) {
+        for (INT x = 0; x < width; ++x) {
+            dat(x,y) = img(x,y);
+        }
+        for (INT x = 0; x < width; ++x) {
+            FLOAT val = apply_correction(dat(x,y), a(x,y), b(x,y));
+            dat(x,y) = val;
+            wgt(x,y) = compute_weight(val, q(x,y), r(x,y));
+        }
+    }
+\end{verbatim}
+
+\begin{verbatim}
+    // Version 4.  Convert a row of pixels, then apply correction
+    // for this row of pixels, finally compute weights for this row
+    // of pixels.
+    for (INT y = 0; y < height; ++y) {
+        for (INT x = 0; x < width; ++x) {
+            dat(x,y) = img(x,y);
+        }
+        for (INT x = 0; x < width; ++x) {
+            dat(x,y) = apply_correction(dat(x,y), a(x,y), b(x,y));
+        }
+        for (INT x = 0; x < width; ++x) {
+            wgt(x,y) = compute_weight(dat(x,y), q(x,y), r(x,y));
+        }
+    }
+\end{verbatim}
+
+Splitting can also be done for the complete image (not for the rows).
+The following versions assumes that pixels are contiguous in other
+arrays than the input image.  If these loops are vectorized, this
+avoids \emph{prologue and epilogue loop peeling} between rows.
+
+\begin{verbatim}
+    // Version 5.  Convert and apply correction to the full image,
+    // then compute the weights for the image.
+    for (INT y = 0; y < height; ++y) {
+        for (INT x = 0; x < width; ++x) {
+            dat(x,y) = apply_correction((FLOAT)img(x,y), a(x,y), b(x,y));
+        }
+    }
+    INT const n = width*height;
+    for (INT i = 0; i < n; ++i) {
+        wgt[i] = compute_weight(dat[i], q[i], r[i]);
+    }
+\end{verbatim}
+
+\begin{verbatim}
+    // Version 6.  Convert the full image to floating-point,
+    // then apply the correction and compute the weights for the image.
+    for (INT y = 0; y < height; ++y) {
+        for (INT x = 0; x < width; ++x) {
+            dat(x,y) = img(x,y);
+        }
+    }
+    INT const n = width*height;
+    for (INT i = 0; i < n; ++i) {
+        FLOAT val = apply_correction(dat[i], a[i], b[i]);
+        dat[i] = val;
+        wgt[i] = compute_weight(val, q[i], r[i]);
+    }
+\end{verbatim}
+
+\begin{verbatim}
+    // Version 7.  Convert the full image to floating-point,
+    // then apply the correction to the image and finally
+    // compute the weights for the image.
+    for (INT y = 0; y < height; ++y) {
+        for (INT x = 0; x < width; ++x) {
+            dat(x,y) = img(x,y);
+        }
+    }
+    INT const n = width*height;
+    for (INT i = 0; i < n; ++i) {
+        dat[i] = apply_correction(dat[i], a[i], b[i]);
+    }
+    for (INT i = 0; i < n; ++i) {
+        wgt[i] = compute_weight(dat[i], q[i], r[i]);
+    }
+\end{verbatim}
+
+
+
+
+
+
+
+
+\end{document}
