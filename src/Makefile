@@ -1,3 +1,4 @@
+# Location of the sources.
 srcdir = .
 
 # To compile with Anger Fog's Vector Class Library (VCL, available at
@@ -17,6 +18,9 @@ CXXFLAGS = $(CFLAGS) $(VCL_INC)
 
 PTHREAD_LIBS = -lpthread
 PTHREAD_FLAGS =
+
+# Replace with $(srcdir)/tee.sh if the tee command is not available.
+TEE = tee
 
 LEVEL_2_FLAGS = -DINSTRSET=2 -msse2
 LEVEL_3_FLAGS = -DINSTRSET=3 -msse3
@@ -98,9 +102,9 @@ vdot_10.o: $(srcdir)/vdot.cpp $(srcdir)/pvc.h
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LEVEL_10_FLAGS) -c $< -o $@
 
 TEST_ID = gcc-native
-TEST_CC = $(shell ./config.sh --cc $(TEST_ID))
-TEST_CFLAGS = $(shell ./config.sh --cflags $(TEST_ID))
-TEST_CC_VERSION = $(shell ./config.sh --version $(TEST_ID))
+TEST_CC = $(shell "$(srcdir)/config.sh" --cc $(TEST_ID))
+TEST_CFLAGS = $(shell "$(srcdir)/config.sh" --cflags $(TEST_ID))
+TEST_CC_VERSION = $(shell "$(srcdir)/config.sh" --version $(TEST_ID))
 preprocessing-$(TEST_ID).o: $(srcdir)/preprocessing.c $(srcdir)/preprocessing.h
 	$(TEST_CC) $(CPPFLAGS) $(TEST_CFLAGS) -c "$<" -o "$@"
 preprocessing-tests-$(TEST_ID).o: $(srcdir)/preprocessing-tests.c $(srcdir)/preprocessing.h $(srcdir)/pvc.h
@@ -115,7 +119,7 @@ timing-$(TEST_ID).o: $(srcdir)/timing.c $(srcdir)/pvc.h
 preprocessing-tests-$(TEST_ID): preprocessing-tests-$(TEST_ID).o preprocessing-$(TEST_ID).o timing-$(TEST_ID).o
 	$(TEST_CC) preprocessing-tests-$(TEST_ID).o preprocessing-$(TEST_ID).o timing-$(TEST_ID).o -o "$@" -lm
 preprocessing-tests-$(TEST_ID).out: preprocessing-tests-$(TEST_ID)
-	./preprocessing-tests-$(TEST_ID) | ./tee.sh preprocessing-tests-$(TEST_ID).out
+	./preprocessing-tests-$(TEST_ID) | $(TEE) preprocessing-tests-$(TEST_ID).out
 
 preprocessing-tests: preprocessing-tests-$(TEST_ID)
 run-preprocessing-tests: preprocessing-tests-$(TEST_ID).out
