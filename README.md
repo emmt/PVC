@@ -17,16 +17,19 @@ PVC is a small C library for:
 ## Usage
 
 PVC is work in progress.  Go to the [src](./src) directory and edit
-the variable `VCL_DIR` in `Makfile` to be the directory where the
-header files of the VCL library are stored (see below).
+the definition of the variable `VCL_DIR` in file
+[`src/Makefile`](./src/Makefile) to be the directory where the header
+files of the VCL library are stored (see below).
 
 
 ## References and useful links
 
 - Jens Gusted's book [*Modern C*](https://modernc.gforge.inria.fr/)
-  about programming with C11 and C99 and Jens Gusted's [P99
+  about programming with C11 and C99.
+
+- Jens Gusted's [P99
   package](https://gustedt.gitlabpages.inria.fr/p99/) for
-  meta-programming in C;
+  meta-programming in C.
 
 - Agner Fog's [Vector Class
   Library](https://github.com/vectorclass/version2/releases) is a
