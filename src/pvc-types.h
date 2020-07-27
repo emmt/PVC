@@ -181,60 +181,6 @@
 #define PVC_TYPE_ID_MIN                 PVC_TYPE_ID_OTHER
 #define PVC_TYPE_ID_MAX                 PVC_TYPE_ID_LONG_DOUBLE
 
-#define _PVC_GENERIC_CALL_1(pfx, x)             \
-    _Generic((x),                               \
-             _Bool:              pfx##_b,       \
-             char:               pfx##_c,       \
-             signed char:        pfx##_sc,      \
-             unsigned char:      pfx##_uc,      \
-             short:              pfx##_s,       \
-             unsigned short:     pfx##_us,      \
-             int:                pfx##_i,       \
-             unsigned int:       pfx##_ui,      \
-             long:               pfx##_l,       \
-             unsigned long:      pfx##_ul,      \
-             long long:          pfx##_ll,      \
-             unsigned long long: pfx##_ull,     \
-             float:              pfx##_f,       \
-             double:             pfx##_d,       \
-             long double:        pfx##_q)(x)
-
-#define _PVC_GENERIC_CALL_2(pfx, x, y)          \
-    _Generic((x) + (y),                         \
-             _Bool:              pfx##_b,       \
-             char:               pfx##_c,       \
-             signed char:        pfx##_sc,      \
-             unsigned char:      pfx##_uc,      \
-             short:              pfx##_s,       \
-             unsigned short:     pfx##_us,      \
-             int:                pfx##_i,       \
-             unsigned int:       pfx##_ui,      \
-             long:               pfx##_l,       \
-             unsigned long:      pfx##_ul,      \
-             long long:          pfx##_ll,      \
-             unsigned long long: pfx##_ull,     \
-             float:              pfx##_f,       \
-             double:             pfx##_d,       \
-             long double:        pfx##_q)(x, y)
-
-#define _PVC_GENERIC_CALL_3(pfx, x, y, z)               \
-    _Generic((x) + (y) + (z),                           \
-             _Bool:              pfx##_b,               \
-             char:               pfx##_c,               \
-             signed char:        pfx##_sc,              \
-             unsigned char:      pfx##_uc,              \
-             short:              pfx##_s,               \
-             unsigned short:     pfx##_us,              \
-             int:                pfx##_i,               \
-             unsigned int:       pfx##_ui,              \
-             long:               pfx##_l,               \
-             unsigned long:      pfx##_ul,              \
-             long long:          pfx##_ll,              \
-             unsigned long long: pfx##_ull,             \
-             float:              pfx##_f,               \
-             double:             pfx##_d,               \
-             long double:        pfx##_q)(x, y, z)
-
 /**
  * @def PVC_IS_SIGNED(T)
  *
