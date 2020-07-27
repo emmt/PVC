@@ -13,6 +13,7 @@
 #ifndef _PVC_TYPES_H
 #define _PVC_TYPES_H 1
 
+#include <stdbool.h>
 #include <limits.h>
 #include <float.h>
 #include <math.h>
@@ -22,8 +23,7 @@
  * @addtogroup types Basic types.
  *
  * Basic types are the 15 basic numerical types implemented by the C
- * language: `bool` (if header `<stdbool.h>` is included, `_Bool`
- * otherwise), `char`, `signed char`, `unsigned char`, `short`,
+ * language: `bool`, `char`, `signed char`, `unsigned char`, `short`,
  * `unsigned short`, `int`, `unsigned int`, `long`, `unsigned long`,
  * `long long`, `unsigned long long`, `float`, `double` and `long
  * double`.
@@ -87,7 +87,7 @@
 #define PVC_SUFFIX_TO_TYPE(sfx)  _PVC_SUFFIX_TO_TYPE_(sfx)
 #ifndef _PVC_DOXYGEN_PARSING
 #  define _PVC_SUFFIX_TO_TYPE_(sfx) _PVC_SUFFIX_TO_TYPE_##sfx
-#  define _PVC_SUFFIX_TO_TYPE_b     _Bool
+#  define _PVC_SUFFIX_TO_TYPE_b     bool
 #  define _PVC_SUFFIX_TO_TYPE_c     char
 #  define _PVC_SUFFIX_TO_TYPE_sc    signed char
 #  define _PVC_SUFFIX_TO_TYPE_uc    unsigned char
@@ -148,7 +148,7 @@
    compiler, only its type is relevant. */
 #  define PVC_TYPE_ID(T)                                                \
     _Generic(*(T*)0,                                                    \
-             _Bool:              PVC_TYPE_ID_BOOL,                      \
+             bool:               PVC_TYPE_ID_BOOL,                      \
              char:               PVC_TYPE_ID_CHAR,                      \
              signed char:        PVC_TYPE_ID_SIGNED_CHAR,               \
              unsigned char:      PVC_TYPE_ID_UNSIGNED_CHAR,             \
@@ -236,7 +236,7 @@
 
 #  define PVC_IS_UNSIGNED(T)                    \
     _Generic(*(T*)0,                            \
-             _Bool:              true,          \
+             bool:               true,          \
              char:               (char)-1 > 0,  \
              unsigned char:      true,          \
              unsigned short:     true,          \
@@ -280,7 +280,7 @@
 
 #  define PVC_IS_INTEGER(T)                     \
     _Generic(*(T*)0,                            \
-             _Bool:              true,          \
+             bool:               true,          \
              char:               true,          \
              signed char:        true,          \
              unsigned char:      true,          \
@@ -337,7 +337,7 @@
  */
 #define PVC_UNQUALIFIED_TYPE_IS(T, U) _Generic(*(T*)0, U: true, default: false)
 
-#define PVC_IS_BOOL(T) PVC_UNQUALIFIED_TYPE_IS(T, _Bool)
+#define PVC_IS_BOOL(T) PVC_UNQUALIFIED_TYPE_IS(T, bool)
 
 #define PVC_IS_CHAR(T)          PVC_UNQUALIFIED_TYPE_IS(T, char)
 #define PVC_IS_SIGNED_CHAR(T)   PVC_UNQUALIFIED_TYPE_IS(T, signed char)
@@ -519,7 +519,7 @@
 
 #  define PVC_TYPE_MIN(T)                                       \
     _Generic(*(T*)0,                                            \
-             _Bool:              false,                         \
+             bool:               false,                         \
              char:               (char)CHAR_MIN,                \
              signed char:        (signed char)SCHAR_MIN,        \
              unsigned char:      (unsigned char)0,              \
@@ -537,7 +537,7 @@
 
 #  define PVC_TYPE_MAX(T)                                               \
     _Generic(*(T*)0,                                                    \
-             _Bool:              true,                                  \
+             bool:               true,                                  \
              char:               (char)CHAR_MAX,                        \
              signed char:        (signed char)SCHAR_MAX,                \
              unsigned char:      (unsigned char)UCHAR_MAX,              \
