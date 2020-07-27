@@ -35,7 +35,7 @@
  * To each basic type, PVC associate a unique numerical identifier
  * (see PVC_TYPE_ID()) and a unique suffix (see PVC_SUFFIX_TO_TYPE())
  * which can both be determined at compile-time.  These can be used
- * for simple type-oriented meta-programming.  For instannce, The
+ * for simple type-oriented meta-programming.  For instance, the
  * identifier may be used to build a type-indexed table while the
  * suffix may be used to name type-specific functions and to allow for
  * simple type dispatching (like the functions in `<math.h>` since
@@ -110,9 +110,9 @@
  * @brief Unique basic type identifier.
  *
  * This macro expands to an integer compile-time constant expression
- * with the unique identifier of the basic type @ T or
- * `PVC_TYPE_ID_OTHER` (that is 0) if @a T is not a basic type.  Type
- * qualifiers are irrelevant.
+ * with the unique identifier of the basic type @a T or
+ * `PVC_TYPE_ID_OTHER` (that is 0) if @a T is not a C basic type.
+ * Type qualifiers are irrelevant.
  *
  * | C Type               | Macro                                                   | Value |
  * |:---------------------|:--------------------------------------------------------|------:|
@@ -135,11 +135,8 @@
  *
  */
 #ifdef _PVC_DOXYGEN_PARSING
-
 #  define PVC_TYPE_ID(T) ...
-
 #else /* _PVC_DOXYGEN_PARSING not defined */
-
 /* To discard any type qualifiers such as `const or `volatile`, the
    trick used in `PVC_TYPE_ID` and similar macros using type generic
    expression is to use the type of dereferencing a null pointer to
@@ -164,7 +161,6 @@
              double:             PVC_TYPE_ID_DOUBLE,                    \
              long double:        PVC_TYPE_ID_LONG_DOUBLE,               \
              default:            PVC_TYPE_ID_OTHER)
-
 #endif /* _PVC_DOXYGEN_PARSING */
 
 #define PVC_TYPE_ID_OTHER               (0)
