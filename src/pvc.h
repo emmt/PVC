@@ -1,7 +1,7 @@
 /*
  * pvc.h -
  *
- * Definition for the PVC library.
+ * Definitions for the PVC library.
  *
  *---------------------------------------------------------------------------
  *
@@ -98,111 +98,53 @@
 #  define PVC_COMPILER_VERSION "unknown-compiler-version"
 #endif
 
+/* Protect against someone else defining private symbols. */
+#if defined(_pvc_field1) || defined(_pvc__pvc_field2)
+#  error "Macros _pvc_fieldN (with N integer) must not be defined."
+#endif
+
 /**
- * @def PVC_SUFFIX_TO_CTYPE(sfx)
+ * @def PVC_ENDIAN_BOM
  *
- * @brief Get C type associated with suffix.
+ * @brief Get byte-order-mark of the host machine.
  *
- * This macro yields the C type associated with the suffix @a sfx as
- * summarized by the following table:
+ * This macro expands to a compile-time constant expression which is a
+ * 32-bit byte-order-mark (BOM) indicating the native byte order of the
+ * host machine.  A BOM of `0x01020304` indicates a big-endian machine,
+ * while a BOM of `0x04030201` indicates a little-endian machine.
  *
- * | Suffix | C Type               |
- * |-------:|:---------------------|
- * |    `c` | `char`               |
- * |   `sc` | `signed char`        |
- * |   `uc` | `unsigned char`      |
- * |    `s` | `short`              |
- * |   `us` | `unsigned short`     |
- * |    `i` | `int`                |
- * |   `ui` | `unsigned int`       |
- * |    `l` | `long`               |
- * |   `ul` | `unsigned long`      |
- * |   `ll` | `long long`          |
- * |  `ull` | `unsigned long long` |
- * |    `f` | `float`              |
- * |    `d` | `double`             |
- * |    `q` | `long double`        |
- *
- * Note that `char`, `signed char` and `unsigned char` are distinct
- * types in C.  Macro expansion is performed on argument @a sfx, call
- * `_PVC_SUFFIX_TO_CTYPE_(sfx)` instead if you do not want to expand
- * argument.
- *
- * Other suffixes, say `x`, may be inserted by defining a macro
- * `_PVC_SUFFIX_TO_CTYPE_x` which expands to the corresponding C type.
+ * @see PVC_IS_BIG_ENDIAN, PVC_IS_LITTLE_ENDIAN.
  */
-#define PVC_SUFFIX_TO_CTYPE(sfx)  _PVC_SUFFIX_TO_CTYPE_(sfx)
+#define PVC_ENDIAN_BOM                                  \
+    (((union {  uint32_t _pvc_field1;                   \
+                uint8_t  _pvc_field2[4];                \
+    }){ ._pvc_field2 = {1,2,3,4} })._pvc_field1)
 
-/* The trick is to define macro `_PVC_SUFFIX_TO_CTYPE_(sfx)` such that
-   it uses 2 tokens `_PVC_SUFFIX_TO_CTYPE_` which is not expanded as
-   it is the name of the macro and `sfx` which is just replaced by its
-   value.  In that way there are less risks that macro expansion yield
-   unpredictable result (the compiler will complain if the macor is
-   redefined). */
-#define _PVC_SUFFIX_TO_CTYPE_(sfx) _PVC_SUFFIX_TO_CTYPE_##sfx
-#define _PVC_SUFFIX_TO_CTYPE_c     char
-#define _PVC_SUFFIX_TO_CTYPE_sc    signed char
-#define _PVC_SUFFIX_TO_CTYPE_uc    unsigned char
-#define _PVC_SUFFIX_TO_CTYPE_s     short
-#define _PVC_SUFFIX_TO_CTYPE_us    unsigned short
-#define _PVC_SUFFIX_TO_CTYPE_i     int
-#define _PVC_SUFFIX_TO_CTYPE_ui    unsigned int
-#define _PVC_SUFFIX_TO_CTYPE_l     long
-#define _PVC_SUFFIX_TO_CTYPE_ul    unsigned long
-#define _PVC_SUFFIX_TO_CTYPE_ll    long long
-#define _PVC_SUFFIX_TO_CTYPE_ull   unsigned long long
-#define _PVC_SUFFIX_TO_CTYPE_f     float
-#define _PVC_SUFFIX_TO_CTYPE_d     double
-#define _PVC_SUFFIX_TO_CTYPE_q     long double
+/**
+ * @def PVC_IS_BIG_ENDIAN
+ *
+ * @brief Check whether host machine is big endian.
+ *
+ * This macro expands to a boolean compile-time constant expression
+ * indicating whether the host machine has *big endian* storage order, that
+ * is with most significant byte first.
+ *
+ * @see PVC_IS_LITTLE_ENDIAN, PVC_ENDIAN_BOM.
+ */
+#define PVC_IS_BIG_ENDIAN (PVC_ENDIAN_BOM == 0x01020304)
 
-#define _PVC_GENERIC_NUMERICAL_CALL_1(pfx, x)           \
-    _Generic((x),                                       \
-             char:               pfx##_c,               \
-             signed char:        pfx##_sc,              \
-             unsigned char:      pfx##_uc,              \
-             short:              pfx##_s,               \
-             unsigned short:     pfx##_us,              \
-             int:                pfx##_i,               \
-             unsigned int:       pfx##_ui,              \
-             long:               pfx##_l,               \
-             unsigned long:      pfx##_ul,              \
-             long long:          pfx##_ll,              \
-             unsigned long long: pfx##_ull,             \
-             float:              pfx##_f,               \
-             double:             pfx##_d,               \
-             long double:        pfx##_q)(x)
-#define _PVC_GENERIC_NUMERICAL_CALL_2(pfx, x, y)        \
-    _Generic((x) + (y),                                 \
-             char:               pfx##_c,               \
-             signed char:        pfx##_sc,              \
-             unsigned char:      pfx##_uc,              \
-             short:              pfx##_s,               \
-             unsigned short:     pfx##_us,              \
-             int:                pfx##_i,               \
-             unsigned int:       pfx##_ui,              \
-             long:               pfx##_l,               \
-             unsigned long:      pfx##_ul,              \
-             long long:          pfx##_ll,              \
-             unsigned long long: pfx##_ull,             \
-             float:              pfx##_f,               \
-             double:             pfx##_d,               \
-             long double:        pfx##_q)((x), (y))
-#define _PVC_GENERIC_NUMERICAL_CALL_3(pfx, x, y, z)     \
-    _Generic((x) + (y) + (z),                           \
-             char:               pfx##_c,               \
-             signed char:        pfx##_sc,              \
-             unsigned char:      pfx##_uc,              \
-             short:              pfx##_s,               \
-             unsigned short:     pfx##_us,              \
-             int:                pfx##_i,               \
-             unsigned int:       pfx##_ui,              \
-             long:               pfx##_l,               \
-             unsigned long:      pfx##_ul,              \
-             long long:          pfx##_ll,              \
-             unsigned long long: pfx##_ull,             \
-             float:              pfx##_f,               \
-             double:             pfx##_d,               \
-             long double:        pfx##_q)((x), (y), (z))
+/**
+ * @def PVC_IS_LITTLE_ENDIAN
+ *
+ * @brief Check whether host machine is little endian.
+ *
+ * This macro expands to a boolean compile-time constant expression
+ * indicating whether the host machine has *little endian* storage order,
+ * that is with least significant byte first.
+ *
+ * @see PVC_IS_BIG_ENDIAN, PVC_ENDIAN_BOM.
+ */
+#define PVC_IS_LITTLE_ENDIAN (PVC_ENDIAN_BOM == 0x04030201)
 
 /**
  * @def PVC_POINTER_TO_INTEGER(ptr)

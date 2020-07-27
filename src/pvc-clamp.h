@@ -13,7 +13,6 @@
 #ifndef _PVC_CLAMP_H
 #define _PVC_CLAMP_H 1
 
-#include <pvc.h>
 #include <pvc-min.h>
 #include <pvc-max.h>
 
@@ -38,16 +37,23 @@
  * @see pcv_min, pvc_max.
  */
 #define pvc_clamp(x, lo, hi) \
-    _PVC_GENERIC_NUMERICAL_CALL_3(_pvc_clamp, x, lo, hi)
+    _PVC_GENERIC_CALL_3(_pvc_clamp, x, lo, hi)
+
+static inline _pvc_clamp_b(_Bool _pvc_arg1, _Bool _pvc_arg2, _Bool _pvc_arg3)
+{
+    /* Cannot be just arg1 because arg2 and arg3 may be the same. */
+    return (_pvc_arg1 | _pvc_arg2) & _pvc_arg3;
+}
 
 /* Define a bunch of temporary and private macros to encode the
    variants of the function. */
 #define __PVC_STATIC_INLINE(T, clamp, min, max)                         \
-    static inline T clamp(T _pvc_arg1, T _pvc_arg2, T _pvc_arg3) {      \
-        return min(max(_pvc_arg1, _pvc_arg2),  _pvc_arg3);              \
+    static inline T clamp(T _pvc_arg1, T _pvc_arg2, T _pvc_arg3)        \
+    {                                                                   \
+        return min(max(_pvc_arg1, _pvc_arg2), _pvc_arg3);               \
     }
 #define  _PVC_STATIC_INLINE(sfx)                        \
-    __PVC_STATIC_INLINE(PVC_SUFFIX_TO_CTYPE(sfx),       \
+    __PVC_STATIC_INLINE(PVC_SUFFIX_TO_TYPE(sfx),        \
                         _pvc_clamp_##sfx,               \
                         _pvc_min2_##sfx,                \
                         _pvc_max2_##sfx)

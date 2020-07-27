@@ -13,7 +13,7 @@
 #ifndef _PVC_MIN_H
 #define _PVC_MIN_H 1
 
-#include <pvc.h>
+#include <pvc-types.h>
 
 /* Protect against someone else defining private symbols. */
 #if defined(_pvc_arg1) || defined(_pvc_arg2)
@@ -33,16 +33,22 @@
  *
  * @see pvc_max, pcv_clamp.
  */
-#define pvc_min(x, y) _PVC_GENERIC_NUMERICAL_CALL_2(_pvc_min2, x, y)
+#define pvc_min(x, y) _PVC_GENERIC_CALL_2(_pvc_min2, x, y)
+
+static inline _pvc_min2_b(_Bool _pvc_arg1, _Bool _pvc_arg2)
+{
+    return _pvc_arg1 & _pvc_arg2;
+}
 
 /* Define a bunch of (temporary and private) macros to encode the
    variants of the function. */
 #define __PVC_STATIC_INLINE(T, func)                            \
-    static inline T func(T _pvc_arg1, T _pvc_arg2) {            \
+    static inline T func(T _pvc_arg1, T _pvc_arg2)              \
+    {                                                           \
         return _pvc_arg1 < _pvc_arg2 ? _pvc_arg1 : _pvc_arg2;   \
     }
 #define  _PVC_STATIC_INLINE(sfx) \
-    __PVC_STATIC_INLINE(PVC_SUFFIX_TO_CTYPE(sfx), _pvc_min2_##sfx)
+    __PVC_STATIC_INLINE(PVC_SUFFIX_TO_TYPE(sfx), _pvc_min2_##sfx)
 
 /* Encode all versions. */
 _PVC_STATIC_INLINE(c)
