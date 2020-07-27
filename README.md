@@ -1,4 +1,4 @@
-# PVC: Playing with the Vector Class library
+# PVC: Playing with Vectorization in C
 
 PVC is a small C library for:
 
@@ -7,11 +7,27 @@ PVC is a small C library for:
 - Tools and definitions for auto-vectorization.
 
 - Optimized functions that benefit from *Single Instruction Multiple
-  Data* (SIMD) instructions of modern CPU architectures.  PVC requires
-  a C++ compiler implementing C++17 standard (like `gcc -std=c++17`)
-  to be built but is intended to be called from C or C++ code.
-  Runtime dispatching is exploited to have a single library that can
-  be used with any (supported) CPU.
+  Data* (SIMD) instructions of modern CPU architectures.
+
+Some parts of PVC consist in macro definitions or inlined-code that
+require no compilation of PVC, it is sufficient to include the
+suitable header files:
+
+- [`<pvc.h>`](./src/pvc.h) for native byte order, compiler version, etc.
+- [`<pvc-types.h>`](./src/pvc-types.h) for type-generic code dealing
+  with basic C types (e.g., `PVC_TYPE_MAX(T)` to get the maximum
+  representable value of type `T`);
+- [`<pvc-math.h>`](./src/pvc-math.h) for simple in-lined math-like
+  functions that evaluate their arguments only once (`pvc_min`,
+  `pvc_max`, `pvc_clamp`);
+- [`<pvc-meta.h>`](./src/pvc-meta.h) for meta-programming with the C
+  pre-processor.
+
+The vectorized functions provided by PVC require a C++ compiler
+implementing C++17 standard (like `gcc -std=c++17`) to be built but is
+intended to be called from C or C++ code.  Runtime dispatching is
+exploited to have a single library that can be used with any
+(supported) CPU.
 
 
 ## Usage
