@@ -29,6 +29,8 @@
 #  error "Macros _pvc_argN (with N integer) must not be defined."
 #endif
 
+#ifndef _PVC_DOXYGEN_PARSING
+
 #define _PVC_GENERIC_MATH_1(pfx, x)             \
     _Generic((x),                               \
              _Bool:              pfx##_b,       \
@@ -83,6 +85,8 @@
              double:             pfx##_d,               \
              long double:        pfx##_q)(x, y, z)
 
+#endif /* _PVC_DOXYGEN_PARSING */
+
 /**
  * @def pvc_min(x, y)
  *
@@ -90,13 +94,20 @@
  *
  * The macro `pvc_min` yields the smallest value of its arguments.
  *
- * This macro uses inlined code and is intended to be as fast as
- * possible.  Arguments are evaluated once and must have numerical
+ * This macro expands as inlined code which is intended to be as fast
+ * as possible.  Arguments are evaluated once and must have numerical
  * values.  NaN are ignored.
  *
- * @see pvc_max, pcv_clamp.
+ * @see pvc_max, pvc_clamp.
  */
+#ifdef _PVC_DOXYGEN_PARSING
+
+#define pvc_min(x, y) ...
+
+#else /* _PVC_DOXYGEN_PARSING not defined */
+
 #define pvc_min(x, y) _PVC_GENERIC_MATH_2(_pvc_min2, x, y)
+
 
 static inline _pvc_min2_b(_Bool _pvc_arg1, _Bool _pvc_arg2)
 {
@@ -133,6 +144,8 @@ _PVC_STATIC_INLINE(q)
 #undef  _PVC_STATIC_INLINE
 #undef __PVC_STATIC_INLINE
 
+#endif /* _PVC_DOXYGEN_PARSING */
+
 /**
  * @def pvc_max(x, y)
  *
@@ -140,15 +153,22 @@ _PVC_STATIC_INLINE(q)
  *
  * The macro `pvc_max` yields the largest value of its arguments.
  *
- * This macro uses inlined code and is intended to be as fast as
- * possible.  Arguments are evaluated once and must have numerical
+ * This macro expands as inlined code which is intended to be as fast
+ * as possible.  Arguments are evaluated once and must have numerical
  * values.  NaN are ignored.
  *
- * @see pvc_min, pcv_clamp.
+ * @see pvc_min, pvc_clamp.
  */
-#define pvc_max(x, y) _PVC_GENERIC_MATH_2(_pvc_##max2, x, y)
+#ifdef _PVC_DOXYGEN_PARSING
 
-static inline _pvc_max2_b(_Bool _pvc_arg1, _Bool _pvc_arg2) {
+#define pvc_max(x, y) ...
+
+#else /* _PVC_DOXYGEN_PARSING not defined */
+
+#define pvc_max(x, y) _PVC_GENERIC_MATH_2(_pvc_max2, x, y)
+
+static inline _pvc_max2_b(_Bool _pvc_arg1, _Bool _pvc_arg2)
+{
     return _pvc_arg1 | _pvc_arg2;
 }
 
@@ -182,6 +202,8 @@ _PVC_STATIC_INLINE(q)
 #undef  _PVC_STATIC_INLINE
 #undef __PVC_STATIC_INLINE
 
+#endif /* _PVC_DOXYGEN_PARSING */
+
 /**
  * @def pvc_clamp(x, lo, hi)
  *
@@ -190,15 +212,20 @@ _PVC_STATIC_INLINE(q)
  * This macro yields `min(max(x, lo), hi)` that is `lo` if `x ≤ lo`,
  * `hi` if `x ≥ hi` and `x` otherwise.
  *
- * This macro uses inlined code and is intended to be as fast as
- * possible.  Arguments are evaluated once and must have numerical
+ * This macro expands as inlined code which is intended to be as fast
+ * as possible.  Arguments are evaluated once and must have numerical
  * values.  Arguments are not checked (@a hi should be greater or
  * equal @a lo) and NaN may not propagate properly.
  *
- * @see pcv_min, pvc_max.
+ * @see pvc_min, pvc_max.
  */
-#define pvc_clamp(x, lo, hi) \
-    _PVC_GENERIC_MATH_3(_pvc_clamp, x, lo, hi)
+#ifdef _PVC_DOXYGEN_PARSING
+
+#define pvc_clamp(x, lo, hi) ...
+
+#else /* _PVC_DOXYGEN_PARSING not defined */
+
+#define pvc_clamp(x, lo, hi) _PVC_GENERIC_MATH_3(_pvc_clamp, x, lo, hi)
 
 static inline _pvc_clamp_b(_Bool _pvc_arg1, _Bool _pvc_arg2, _Bool _pvc_arg3)
 {
@@ -238,6 +265,8 @@ _PVC_STATIC_INLINE(q)
 /* Undefine temporary private macros. */
 #undef  _PVC_STATIC_INLINE
 #undef __PVC_STATIC_INLINE
+
+#endif /* _PVC_DOXYGEN_PARSING */
 
 /**
  * @}

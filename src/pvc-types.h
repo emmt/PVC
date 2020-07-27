@@ -78,30 +78,31 @@
  * Other suffixes, say `x`, may be inserted by defining a macro
  * `_PVC_SUFFIX_TO_TYPE_x` which expands to the corresponding C type.
  */
-#define PVC_SUFFIX_TO_TYPE(sfx)  _PVC_SUFFIX_TO_TYPE_(sfx)
-
 /* The trick is to define macro `_PVC_SUFFIX_TO_TYPE_(sfx)` such that
    it uses 2 tokens `_PVC_SUFFIX_TO_TYPE_` which is not expanded as it
    is the name of the macro and `sfx` which is just replaced by its
    value.  In that way there are less risks that macro expansion yield
    unpredictable result (the compiler will complain if the macor is
    redefined). */
-#define _PVC_SUFFIX_TO_TYPE_(sfx) _PVC_SUFFIX_TO_TYPE_##sfx
-#define _PVC_SUFFIX_TO_TYPE_b     _Bool
-#define _PVC_SUFFIX_TO_TYPE_c     char
-#define _PVC_SUFFIX_TO_TYPE_sc    signed char
-#define _PVC_SUFFIX_TO_TYPE_uc    unsigned char
-#define _PVC_SUFFIX_TO_TYPE_s     short
-#define _PVC_SUFFIX_TO_TYPE_us    unsigned short
-#define _PVC_SUFFIX_TO_TYPE_i     int
-#define _PVC_SUFFIX_TO_TYPE_ui    unsigned int
-#define _PVC_SUFFIX_TO_TYPE_l     long
-#define _PVC_SUFFIX_TO_TYPE_ul    unsigned long
-#define _PVC_SUFFIX_TO_TYPE_ll    long long
-#define _PVC_SUFFIX_TO_TYPE_ull   unsigned long long
-#define _PVC_SUFFIX_TO_TYPE_f     float
-#define _PVC_SUFFIX_TO_TYPE_d     double
-#define _PVC_SUFFIX_TO_TYPE_q     long double
+#define PVC_SUFFIX_TO_TYPE(sfx)  _PVC_SUFFIX_TO_TYPE_(sfx)
+#ifndef _PVC_DOXYGEN_PARSING
+#  define _PVC_SUFFIX_TO_TYPE_(sfx) _PVC_SUFFIX_TO_TYPE_##sfx
+#  define _PVC_SUFFIX_TO_TYPE_b     _Bool
+#  define _PVC_SUFFIX_TO_TYPE_c     char
+#  define _PVC_SUFFIX_TO_TYPE_sc    signed char
+#  define _PVC_SUFFIX_TO_TYPE_uc    unsigned char
+#  define _PVC_SUFFIX_TO_TYPE_s     short
+#  define _PVC_SUFFIX_TO_TYPE_us    unsigned short
+#  define _PVC_SUFFIX_TO_TYPE_i     int
+#  define _PVC_SUFFIX_TO_TYPE_ui    unsigned int
+#  define _PVC_SUFFIX_TO_TYPE_l     long
+#  define _PVC_SUFFIX_TO_TYPE_ul    unsigned long
+#  define _PVC_SUFFIX_TO_TYPE_ll    long long
+#  define _PVC_SUFFIX_TO_TYPE_ull   unsigned long long
+#  define _PVC_SUFFIX_TO_TYPE_f     float
+#  define _PVC_SUFFIX_TO_TYPE_d     double
+#  define _PVC_SUFFIX_TO_TYPE_q     long double
+#endif /* _PVC_DOXYGEN_PARSING */
 
 /**
  * @def PVC_TYPE_ID(T)
@@ -133,13 +134,19 @@
  * | `long double`        | `PVC_TYPE_ID_LONG_DOUBLE`                               |    15 |
  *
  */
+#ifdef _PVC_DOXYGEN_PARSING
+
+#  define PVC_TYPE_ID(T) ...
+
+#else /* _PVC_DOXYGEN_PARSING not defined */
+
 /* To discard any type qualifiers such as `const or `volatile`, the
    trick used in `PVC_TYPE_ID` and similar macros using type generic
    expression is to use the type of dereferencing a null pointer to
    the considered type.  This is allowed because the controlling
    expression in a type generic construction is not evaluated by the
    compiler, only its type is relevant. */
-#define PVC_TYPE_ID(T)                                                  \
+#  define PVC_TYPE_ID(T)                                                \
     _Generic(*(T*)0,                                                    \
              _Bool:              PVC_TYPE_ID_BOOL,                      \
              char:               PVC_TYPE_ID_CHAR,                      \
@@ -157,6 +164,8 @@
              double:             PVC_TYPE_ID_DOUBLE,                    \
              long double:        PVC_TYPE_ID_LONG_DOUBLE,               \
              default:            PVC_TYPE_ID_OTHER)
+
+#endif /* _PVC_DOXYGEN_PARSING */
 
 #define PVC_TYPE_ID_OTHER               (0)
 #define PVC_TYPE_ID_BOOL                (1)
@@ -193,19 +202,6 @@
  *
  * @see PVC_IS_UNSIGNED, PVC_IS_INTEGER, PVC_IS_FLOATINGPOINT.
  */
-#define PVC_IS_SIGNED(T)                        \
-    _Generic(*(T*)0,                            \
-             char:        (char)-1 < 0,         \
-             signed char: true,                 \
-             short:       true,                 \
-             int:         true,                 \
-             long:        true,                 \
-             long long:   true,                 \
-             float:       true,                 \
-             double:      true,                 \
-             long double: true,                 \
-             default:     false)
-
 /**
  * @def PVC_IS_UNSIGNED(T)
  *
@@ -218,7 +214,27 @@
  *
  * @see PVC_IS_SIGNED, PVC_IS_INTEGER, PVC_IS_FLOATINGPOINT.
  */
-#define PVC_IS_UNSIGNED(T)                      \
+#ifdef _PVC_DOXYGEN_PARSING
+
+#  define PVC_IS_SIGNED(T) ...
+#  define PVC_IS_UNSIGNED(T) ...
+
+#else /* _PVC_DOXYGEN_PARSING not defined */
+
+#  define PVC_IS_SIGNED(T)                      \
+    _Generic(*(T*)0,                            \
+             char:        (char)-1 < 0,         \
+             signed char: true,                 \
+             short:       true,                 \
+             int:         true,                 \
+             long:        true,                 \
+             long long:   true,                 \
+             float:       true,                 \
+             double:      true,                 \
+             long double: true,                 \
+             default:     false)
+
+#  define PVC_IS_UNSIGNED(T)                    \
     _Generic(*(T*)0,                            \
              _Bool:              true,          \
              char:               (char)-1 > 0,  \
@@ -228,6 +244,8 @@
              unsigned long:      true,          \
              unsigned long long: true,          \
              default:            false)
+
+#endif /* _PVC_DOXYGEN_PARSING */
 
 /**
  * @def PVC_IS_INTEGER(T)
@@ -241,7 +259,26 @@
  *
  * @see PVC_IS_UNSIGNED, PVC_IS_SIGNED, PVC_IS_FLOATINGPOINT.
  */
-#define PVC_IS_INTEGER(T)                       \
+/**
+ * @def PVC_IS_FLOATINGPOINT(T)
+ *
+ * @brief Checking for floating point type.
+ *
+ * This macro expands to a boolean compile-time constant expression
+ * indicating whether its argument is a floating-point type.  This macro
+ * should always compile, yielding false for non floating-point numerical
+ * types or non-numerical type.
+ *
+ * @see PVC_IS_UNSIGNED, PVC_IS_SIGNED, PVC_IS_INTEGER.
+ */
+#ifdef _PVC_DOXYGEN_PARSING
+
+#  define PVC_IS_INTEGER(T) ...
+#  define PVC_IS_FLOATINGPOINT(T) ...
+
+#else /* _PVC_DOXYGEN_PARSING not defined */
+
+#  define PVC_IS_INTEGER(T)                     \
     _Generic(*(T*)0,                            \
              _Bool:              true,          \
              char:               true,          \
@@ -257,24 +294,14 @@
              unsigned long long: true,          \
              default:            false)
 
-/**
- * @def PVC_IS_FLOATINGPOINT(T)
- *
- * @brief Checking for floating point type.
- *
- * This macro expands to a boolean compile-time constant expression
- * indicating whether its argument is a floating-point type.  This macro
- * should always compile, yielding false for non floating-point numerical
- * types or non-numerical type.
- *
- * @see PVC_IS_UNSIGNED, PVC_IS_SIGNED, PVC_IS_INTEGER.
- */
-#define PVC_IS_FLOATINGPOINT(T)                 \
+#  define PVC_IS_FLOATINGPOINT(T)               \
     _Generic(*(T*)0,                            \
              float:       true,                 \
              double:      true,                 \
              long double: true,                 \
              default:     false)
+
+#endif /* _PVC_DOXYGEN_PARSING */
 
 /**
  * @def PVC_QUALIFIED_TYPE_IS(T, Q)
@@ -377,27 +404,33 @@
 
    See <https://en.cppreference.com/w/c>.
  */
-#if defined(HUGE_VALF)
-#  define PVC_FLT_INF  (HUGE_VALF)
-#elif defined(INFINITY)
-#  define PVC_FLT_INF  ((float)INFINITY)
-#else /* use literal constant that certainly  overflows */
-#  define PVC_FLT_INF  (1e10000f)
-#endif
-#if defined(HUGE_VAL)
-#  define PVC_DBL_INF  (HUGE_VAL)
-#elif defined(INFINITY)
-#  define PVC_DBL_INF  ((double)INFINITY)
-#else /* use literal constant that certainly  overflows */
-#  define PVC_DBL_INF  (1e10000)
-#endif
-#if defined(HUGE_VALL)
-#  define PVC_LDBL_INF  (HUGE_VALL)
-#elif defined(INFINITY)
-#  define PVC_LDBL_INF  ((long double)INFINITY)
-#else /* use literal constant that certainly  overflows */
-#  define PVC_LDBL_INF  (1e10000L)
-#endif
+#ifdef _PVC_DOXYGEN_PARSING
+#  define PVC_FLT_INF  ...
+#  define PVC_LDBL_INF ...
+#  define PVC_DBL_INF  ...
+#else /* _PVC_DOXYGEN_PARSING not defined */
+#  if defined(HUGE_VALF)
+#    define PVC_FLT_INF  (HUGE_VALF)
+#  elif defined(INFINITY)
+#    define PVC_FLT_INF  ((float)INFINITY)
+#  else /* use literal constant that certainly  overflows */
+#    define PVC_FLT_INF  (1e10000f)
+#  endif
+#  if defined(HUGE_VAL)
+#    define PVC_DBL_INF  (HUGE_VAL)
+#  elif defined(INFINITY)
+#    define PVC_DBL_INF  ((double)INFINITY)
+#  else /* use literal constant that certainly  overflows */
+#    define PVC_DBL_INF  (1e10000)
+#  endif
+#  if defined(HUGE_VALL)
+#    define PVC_LDBL_INF  (HUGE_VALL)
+#  elif defined(INFINITY)
+#    define PVC_LDBL_INF  ((long double)INFINITY)
+#  else /* use literal constant that certainly  overflows */
+#    define PVC_LDBL_INF  (1e10000L)
+#  endif
+#endif /* _PVC_DOXYGEN_PARSING */
 
 /**
  * @def PVC_FLT_NAN
@@ -432,6 +465,11 @@
  *
  * @see PVC_FLT_NAN, PVC_DBL_NAN.
  */
+#ifdef _PVC_DOXYGEN_PARSING
+#  define PVC_FLT_NAN  ...
+#  define PVC_DBL_NAN  ...
+#  define PVC_LDBL_NAN ...
+#else /* _PVC_DOXYGEN_PARSING not defined */
 /* Since C99, the macro `NAN`, defined in `<math.h>`, expands a to
    constant expression of type float which evaluates to a quiet
    not-a-number (QNaN) value.  If the implementation does not support
@@ -439,15 +477,16 @@
 
    See <https://en.cppreference.com/w/c>.
  */
-#ifdef NAN
-#  define PVC_FLT_NAN  ((float)NAN)
-#  define PVC_DBL_NAN  ((double)NAN)
-#  define PVC_LDBL_NAN ((long double)NAN)
-#else
-#  define PVC_FLT_NAN  (1.0f/0.0f)
-#  define PVC_DBL_NAN  (1.0/0.0)
-#  define PVC_LDBL_NAN (1.0L/0.0L)
-#endif
+#  ifdef NAN
+#    define PVC_FLT_NAN  ((float)NAN)
+#    define PVC_DBL_NAN  ((double)NAN)
+#    define PVC_LDBL_NAN ((long double)NAN)
+#  else
+#    define PVC_FLT_NAN  (1.0f/0.0f)
+#    define PVC_DBL_NAN  (1.0/0.0)
+#    define PVC_LDBL_NAN (1.0L/0.0L)
+#  endif
+#endif /* _PVC_DOXYGEN_PARSING */
 
 /**
  * @def PVC_TYPE_MIN(T)
@@ -460,7 +499,25 @@
  *
  * @see PVC_TYPE_MAX.
  */
-#define PVC_TYPE_MIN(T)                                         \
+/**
+ * @def PVC_TYPE_MAX(T)
+ *
+ * @brief Maximum value of given type.
+ *
+ * This macro expands to a compile-time constant expression of type
+ * @a T which evaluates to the maximal representable value for type
+ * @a T, that is plus infinity for floating-point types.
+ *
+ * @see PVC_TYPE_MIN.
+ */
+#ifdef _PVC_DOXYGEN_PARSING
+
+#  define PVC_TYPE_MIN(T) ...
+#  define PVC_TYPE_MAX(T) ...
+
+#else /* _PVC_DOXYGEN_PARSING not defined */
+
+#  define PVC_TYPE_MIN(T)                                       \
     _Generic(*(T*)0,                                            \
              _Bool:              false,                         \
              char:               (char)CHAR_MIN,                \
@@ -478,18 +535,7 @@
              double:             -PVC_DBL_INF,                  \
              long double:        -PVC_LDBL_INF)
 
-/**
- * @def PVC_TYPE_MAX(T)
- *
- * @brief Maximum value of given type.
- *
- * This macro expands to a compile-time constant expression of type
- * @a T which evaluates to the maximal representable value for type
- * @a T, that is plus infinity for floating-point types.
- *
- * @see PVC_TYPE_MIN.
- */
-#define PVC_TYPE_MAX(T)                                                 \
+#  define PVC_TYPE_MAX(T)                                               \
     _Generic(*(T*)0,                                                    \
              _Bool:              true,                                  \
              char:               (char)CHAR_MAX,                        \
@@ -506,6 +552,8 @@
              float:              PVC_FLT_INF,                           \
              double:             PVC_DBL_INF,                           \
              long double:        PVC_LDBL_INF)
+
+#endif /* _PVC_DOXYGEN_PARSING */
 
 /**
  * @}
