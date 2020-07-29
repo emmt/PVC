@@ -14,6 +14,7 @@
 #define _PVC_TYPES_H 1
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <limits.h>
 #include <float.h>
 #include <math.h>
@@ -69,6 +70,14 @@
  * |    `f` | `float`              |
  * |    `d` | `double`             |
  * |    `q` | `long double`        |
+ * |   `i8` | `int8_t`             |
+ * |   `u8` | `uint8_t`            |
+ * |  `i16` | `int16_t`            |
+ * |  `u16` | `uint16_t`           |
+ * |  `i32` | `int32_t`            |
+ * |  `u32` | `uint32_t`           |
+ * |  `i64` | `int64_t`            |
+ * |  `u64` | `uint64_t`           |
  *
  * Note that `char`, `signed char` and `unsigned char` are distinct
  * types in C.  Macro expansion is performed on argument @a sfx, call
@@ -102,6 +111,14 @@
 #  define _PVC_SUFFIX_TO_TYPE_f     float
 #  define _PVC_SUFFIX_TO_TYPE_d     double
 #  define _PVC_SUFFIX_TO_TYPE_q     long double
+#  define _PVC_SUFFIX_TO_TYPE_i8    int8_t
+#  define _PVC_SUFFIX_TO_TYPE_u8    uint8_t
+#  define _PVC_SUFFIX_TO_TYPE_i16   int16_t
+#  define _PVC_SUFFIX_TO_TYPE_u16   uint16_t
+#  define _PVC_SUFFIX_TO_TYPE_i32   int32_t
+#  define _PVC_SUFFIX_TO_TYPE_u32   uint32_t
+#  define _PVC_SUFFIX_TO_TYPE_i64   int64_t
+#  define _PVC_SUFFIX_TO_TYPE_u64   uint64_t
 #endif /* _PVC_DOXYGEN_PARSING */
 
 /**
@@ -185,6 +202,62 @@
 #define PVC_TYPE_ID_LONG_DOUBLE         (15)
 #define PVC_TYPE_ID_MIN                 PVC_TYPE_ID_OTHER
 #define PVC_TYPE_ID_MAX                 PVC_TYPE_ID_LONG_DOUBLE
+
+#if INT8_MIN == SCHAR_MIN && INT8_MAX == SCHAR_MAX
+#  define PVC_TYPE_ID_INT8     PVC_TYPE_ID_SIGNED_CHAR
+#endif
+
+#if UINT8_MAX == UCHAR_MAX
+#  define PVC_TYPE_ID_UINT8    PVC_TYPE_ID_UNSIGNED_CHAR
+#endif
+
+#if INT16_MIN == SHRT_MIN && INT16_MAX == SHRT_MAX
+#  define PVC_TYPE_ID_INT16    PVC_TYPE_ID_SHORT
+#elif INT16_MIN == INT_MIN && INT16_MAX == INT_MAX
+#  define PVC_TYPE_ID_INT16    PVC_TYPE_ID_INT
+#endif
+
+#if UINT16_MAX == USHRT_MAX
+#  define PVC_TYPE_ID_UINT16   PVC_TYPE_ID_UNSIGNED_SHORT
+#elif UINT16_MAX == UINT_MAX
+#  define PVC_TYPE_ID_UINT16   PVC_TYPE_ID_UNSIGNED_INT
+#endif
+
+#if INT32_MIN == SHRT_MIN && INT32_MAX == SHRT_MAX
+#  define PVC_TYPE_ID_INT32    PVC_TYPE_ID_SHORT
+#elif INT32_MIN == INT_MIN && INT32_MAX == INT_MAX
+#  define PVC_TYPE_ID_INT32    PVC_TYPE_ID_INT
+#elif INT32_MIN == LONG_MIN && INT32_MAX == LONG_MAX
+#  define PVC_TYPE_ID_INT32    PVC_TYPE_ID_LONG
+#endif
+
+#if UINT32_MAX == USHRT_MAX
+#  define PVC_TYPE_ID_UINT32   PVC_TYPE_ID_UNSIGNED_SHORT
+#elif UINT32_MAX == UINT_MAX
+#  define PVC_TYPE_ID_UINT32   PVC_TYPE_ID_UNSIGNED_INT
+#elif UINT32_MAX == ULONG_MAX
+#  define PVC_TYPE_ID_UINT32   PVC_TYPE_ID_UNSIGNED_LONG
+#endif
+
+#if INT64_MIN == SHRT_MIN && INT64_MAX == SHRT_MAX
+#  define PVC_TYPE_ID_INT64    PVC_TYPE_ID_SHORT
+#elif INT64_MIN == INT_MIN && INT64_MAX == INT_MAX
+#  define PVC_TYPE_ID_INT64    PVC_TYPE_ID_INT
+#elif INT64_MIN == LONG_MIN && INT64_MAX == LONG_MAX
+#  define PVC_TYPE_ID_INT64    PVC_TYPE_ID_LONG
+#elif INT64_MIN == LLONG_MIN && INT64_MAX == LLONG_MAX
+#  define PVC_TYPE_ID_INT64    PVC_TYPE_ID_LLONG
+#endif
+
+#if UINT64_MAX == USHRT_MAX
+#  define PVC_TYPE_ID_UINT64   PVC_TYPE_ID_UNSIGNED_SHORT
+#elif UINT64_MAX == UINT_MAX
+#  define PVC_TYPE_ID_UINT64   PVC_TYPE_ID_UNSIGNED_INT
+#elif UINT64_MAX == ULONG_MAX
+#  define PVC_TYPE_ID_UINT64   PVC_TYPE_ID_UNSIGNED_LONG
+#elif UINT64_MAX == ULLONG_MAX
+#  define PVC_TYPE_ID_UINT64   PVC_TYPE_ID_UNSIGNED_LLONG
+#endif
 
 /**
  * @def PVC_IS_SIGNED(T)
