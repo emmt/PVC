@@ -94,19 +94,18 @@ be called at run-time to determine the set of instructions of the current CPU.
 This can be used to dispatch to different versions of some function each
 compiled for a given instruction set.
 
-
-| `INSTRSET` | GCC flags                          | Description                    | Vector size (bits) |
-|-----------:|:-----------------------------------|:-------------------------------|:------------------:|
-|          1 | `-msse`                            | SSE                            | 128                |
-|          2 | `-msse2`                           | SSE2                           | 128                |
-|          3 | `-msse3`                           | SSE3                           | 128                |
-|          4 | `-mssse3`                          | SSSE3                          | 128                |
-|          5 | `-msse4.1`                         | SSE4.1                         | 128                |
-|          6 | `-msse4.2`                         | SSE4.2                         | 128                |
-|          7 | `-mavx`                            | AVX                            | 256                |
-|          8 | `-mavx2 -mfma`                     | AVX2                           | 256                |
-|          9 | `-mavx512f`                        | AVX512F                        | 512                |
-|         10 | `-mavx512vl -mavx512bw -mavx512dq` | AVX512VL + AVX512BW + AVX512DQ | 512                |
+| `INSTRSET` | GCC flags                          | Defined macros                                 | Vector size         |
+|-----------:|:-----------------------------------|:-----------------------------------------------|:-------------------:|
+|          1 | `-msse`                            | `__SSE__`                                      | 128 bits / 16 bytes |
+|          2 | `-msse2`                           | `__SSE2__`                                     | 128 bits / 16 bytes |
+|          3 | `-msse3`                           | `__SSE3__`                                     | 128 bits / 16 bytes |
+|          4 | `-mssse3`                          | `__SSSE3__`                                    | 128 bits / 16 bytes |
+|          5 | `-msse4.1`                         | `__SSE4_1__`                                   | 128 bits / 16 bytes |
+|          6 | `-msse4.2`                         | `__SSE4_2__`                                   | 128 bits / 16 bytes |
+|          7 | `-mavx`                            | `__AVX__`                                      | 256 bits / 32 bytes |
+|          8 | `-mavx2 -mfma`                     | `__AVX2__`, `__FMA__`                          | 256 bits / 32 bytes |
+|          9 | `-mavx512f`                        | `__AVX512F__`                                  | 512 bits / 64 bytes |
+|         10 | `-mavx512vl -mavx512bw -mavx512dq` | `__AVX512VL__`, `__AVX512BW__`, `__AVX512DQ__` | 512 bits / 64 bytes |
 
 To limit the set of instructions used by VCL, it is sufficient to define the
 macro `INSTRSET` before including `<vectorclass.h>`.  If `INSTRSET` is not
