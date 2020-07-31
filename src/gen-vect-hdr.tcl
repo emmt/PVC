@@ -71,6 +71,10 @@ namespace eval ::vect::intrinsics {
         __def__ 512 {min max} {i32 u32 i64 u64 f d}   AVX512F
         __def__ 512 {min max} {i8 u8 i16 u16}         AVX512BW
 
+        # Fused multiply-add.
+        __def__ {128 256} {fmadd fmsub} {f d} FMA
+        __def__ 512       {fmadd fmsub} {f d} AVX512F
+
         # Load/store/setzero operations.
         foreach op {load loadu store storeu setzero} {
             set db(instr,_mm_${op}_si128)     SSE2
@@ -88,46 +92,48 @@ namespace eval ::vect::intrinsics {
     }
 
     # Private method, define multiple intrinsic functions.
-    proc __def__ {width ops types instr} {
+    proc __def__ {sizes ops types instr} {
         variable db
-        switch -exact -- $width {
-            xmm - 128 {
-                set nbits 128
-                set pfx "_mm"
-            }
-            ymm - 256 {
-                set nbits 256
-                set pfx "_mm256"
-            }
-            zmm - 512 {
-                set nbits 512
-                set pfx "_mm512"
-            }
-            default {
-                error "Invalid packed vector size \"$width\""
-            }
-        }
-        foreach type $types {
-            switch -exact -- $type {
-                i8 - u8 - i16 - u16 - i32 - u32 - i64 - u64 {
-                    set sfx ep$type
+        foreach size $sizes {
+            switch -exact -- $size {
+                xmm - 128 {
+                    set nbits 128
+                    set pfx "_mm"
                 }
-                f {
-                    set sfx ps
+                ymm - 256 {
+                    set nbits 256
+                    set pfx "_mm256"
                 }
-                d {
-                    set sfx pd
+                zmm - 512 {
+                    set nbits 512
+                    set pfx "_mm512"
                 }
                 default {
-                    error "Invalid element type \"$type\""
+                    error "Invalid packed vector size \"$size\""
                 }
             }
-            foreach op $ops {
-                set func ${pfx}_${op}_${sfx}
-                if {[info exists db(instr,$func)]} {
-                    error "Duplicate definition for \"$func\""
+            foreach type $types {
+                switch -exact -- $type {
+                    i8 - u8 - i16 - u16 - i32 - u32 - i64 - u64 {
+                        set sfx ep$type
+                    }
+                    f {
+                        set sfx ps
+                    }
+                    d {
+                        set sfx pd
+                    }
+                    default {
+                        error "Invalid element type \"$type\""
+                    }
                 }
-                set db(instr,$func) $instr
+                foreach op $ops {
+                    set func ${pfx}_${op}_${sfx}
+                    if {[info exists db(instr,$func)]} {
+                        error "Duplicate definition for \"$func\""
+                    }
+                    set db(instr,$func) $instr
+                }
             }
         }
     }
@@ -511,64 +517,6 @@ namespace eval ::vect {
                     set config(is_signed,$field) $config(is_signed,$eltype)
                     set config(is_unsigned,$field) $config(is_unsigned,$eltype)
                 }
-            }
-        }
-
-        # Prefixes and suffixes for standard packed functions.
-        foreach {typ pfx sfx req} {
-            __m128  _mm_     _ps      SSE
-            __m128d _mm_     _pd      SSE2
-            __m128i _mm_     _si128   SSE2
-
-            __m256  _mm256_  _ps      AVX
-            __m256d _mm256_  _pd      AVX
-            __m256i _mm256_  _si256   AVX
-
-            __m512  _mm512_  _ps      AVX512F
-            __m512d _mm512_  _pd      AVX512F
-            __m512i _mm512_  _si512   AVX512F
-        } {
-            set PFX($typ) $pfx
-            set SFX($typ) $sfx
-            set REQ($typ) $req
-        }
-        set types [list \
-                       __m128 __m128d __m128i \
-                       __m256 __m256d __m256i \
-                       __m512 __m512d __m512i]
-
-        foreach op {setzero} {
-            foreach typ $types {
-                set func $PFX($typ)${op}$SFX($typ)
-                set req $REQ($typ)
-                define $op $typ $func {} $req
-            }
-        }
-        foreach op {load loadu} {
-            foreach typ $types {
-                define $op $typ $PFX($typ)${op}$SFX($typ) addr  $REQ($typ)
-            }
-        }
-        foreach op {store storeu} {
-            foreach typ $types {
-                define $op void $PFX($typ)${op}$SFX($typ) [list addr $typ]  $REQ($typ)
-            }
-        }
-        foreach op {add sub mul div} {
-            foreach typ $types {
-                define $op $typ $PFX($typ)${op}$SFX($typ) [list $typ $typ] $REQ($typ)
-            }
-        }
-        foreach op {fmadd fmsub} {
-            foreach typ $types {
-                if {[is_ymm $typ]} {
-                    set req FMA
-                } elseif {[is_zmm $typ]} {
-                    set req AVX512F
-                } else {
-                    continue
-                }
-                define $op $typ $PFX($typ)${op}$SFX($typ) [list $typ $typ $typ] $req
             }
         }
     }
