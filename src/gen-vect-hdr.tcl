@@ -14,6 +14,339 @@
 # The next line restarts using tclsh \
     exec tclsh "$0" "$@"
 
+#------------------------------------------------------------------------------
+#
+# Definitions of intrinsic functions.
+#
+namespace eval ::vect::intrinsics {
+    # Namespace variable to store all definitions.
+    variable db
+
+    proc __init__ {} {
+        variable db
+        unset -nocomplain db
+        # Element-wise arithmetic operations.
+        #
+        # i8  _epi8  8-bit integer
+        # u8  _epu8  8-bit unsigned integer
+        # i16 _epi16 16-bit integer
+        # u16 _epu16 16-bit unsigned integer
+        # i32 _epi32 32-bit integer
+        # u32 _epu32 32-bit unsigned integer
+        # i64 _epi64 64-bit integer
+        # u64 _epu64 64-bit unsigned integer
+        # f   _ps    32-bit floating-point
+        # d   _pd    64-bit floating-point
+        #
+        # Addition/subtraction.
+        __def__ 128 {add sub} {f}                SSE
+        __def__ 128 {add sub} {i8 i16 i32 i64 d} SSE2
+        __def__ 256 {add sub} {f d}              AVX
+        __def__ 256 {add sub} {i8 i16 i32 i64}   AVX2
+        __def__ 512 {add sub} {i32 f d}          AVX512F; # KNCNI
+        __def__ 512 {add sub} {i64}              AVX512F
+        __def__ 512 {add sub} {i8 i16}           AVX512BW
+
+        # Multiplication/division.
+        __def__ 128 {mul div} {f}       SSE
+        __def__ 128 {mul div} {d}       SSE2
+        __def__ 256 {mul div} {f d}     AVX
+        __def__ 256 {mul}     {i32 u32} AVX2
+        __def__ 512 {mul div} {f d}     AVX512F
+        __def__ 512 {mul}     {i32 u32} AVX512F
+
+        # Addition/subtraction with saturation.
+        __def__ 128 {adds subs} {i8 u8 i16 u16} SSE2
+        __def__ 256 {adds subs} {i8 u8 i16 u16} AVX2
+        __def__ 512 {adds subs} {i8 u8 i16 u16} AVX512BW
+
+        # Element-wise minimum/maximum.
+        __def__ 128 {min max} {f}                     SSE
+        __def__ 128 {min max} {u8 i16 d}              SSE2
+        __def__ 128 {min max} {i8 u16 i32 u32}        SSE4_1
+        __def__ 128 {min max} {i64 u64}               {AVX512F & AVX512VL}
+        __def__ 256 {min max} {f d}                   AVX
+        __def__ 256 {min max} {i8 u8 i16 u16 i32 u32} AVX2
+        __def__ 256 {min max} {i64 u64}               {AVX512F & AVX512VL}
+        __def__ 512 {min max} {i32 u32 i64 u64 f d}   AVX512F
+        __def__ 512 {min max} {i8 u8 i16 u16}         AVX512BW
+
+        # Load/store/setzero operations.
+        foreach op {load loadu store storeu setzero} {
+            set db(instr,_mm_${op}_si128)     SSE2
+            set db(instr,_mm_${op}_ps)        SSE
+            set db(instr,_mm_${op}_pd)        SSE2
+
+            set db(instr,_mm256_${op}_si256)  AVX
+            set db(instr,_mm256_${op}_ps)     AVX
+            set db(instr,_mm256_${op}_pd)     AVX
+
+            set db(instr,_mm512_${op}_si512)  AVX512F
+            set db(instr,_mm512_${op}_ps)     AVX512F
+            set db(instr,_mm512_${op}_pd)     AVX512F
+        }
+    }
+
+    # Private method, define multiple intrinsic functions.
+    proc __def__ {width ops types instr} {
+        variable db
+        switch -exact -- $width {
+            xmm - 128 {
+                set nbits 128
+                set pfx "_mm"
+            }
+            ymm - 256 {
+                set nbits 256
+                set pfx "_mm256"
+            }
+            zmm - 512 {
+                set nbits 512
+                set pfx "_mm512"
+            }
+            default {
+                error "Invalid packed vector size \"$width\""
+            }
+        }
+        foreach type $types {
+            switch -exact -- $type {
+                i8 - u8 - i16 - u16 - i32 - u32 - i64 - u64 {
+                    set sfx ep$type
+                }
+                f {
+                    set sfx ps
+                }
+                d {
+                    set sfx pd
+                }
+                default {
+                    error "Invalid element type \"$type\""
+                }
+            }
+            foreach op $ops {
+                set func ${pfx}_${op}_${sfx}
+                if {[info exists db(instr,$func)]} {
+                    error "Duplicate definition for \"$func\""
+                }
+                set db(instr,$func) $instr
+            }
+        }
+    }
+
+    proc parse_function func {
+        set re {^(_mm|_mm256|_mm512)_([a-z]+)_(ep[iu](8|16|32|64|128)|p[sd]|si[0-9]+)$}
+        if {[regexp -- $re $func all pfx op sfx]} {
+            return [list $pfx $op $sfx]
+        }
+    }
+
+    proc get_nbits arg {
+        switch -exact -- $arg {
+            xmm - 128 {
+                return 128
+            }
+            ymm - 256 {
+                return 256
+            }
+            zmm - 512 {
+                return 512
+            }
+            default {
+                error "Unknown number of bits for \"$arg\""
+            }
+        }
+    }
+
+    # TO DO: directly understand vector type as unique argument.
+    #
+    # Yield the intrinsic function to perform given operation on registers
+    # of given size with given element type.
+    proc get_function {op arg1 arg2} {
+        variable db
+        switch -exact -- $arg1 {
+            xmm - 128 {
+                set nbits 128
+                set pfx "_mm"
+            }
+            ymm - 256 {
+                set nbits 256
+                set pfx "_mm256"
+            }
+            zmm - 512 {
+                set nbits 512
+                set pfx "_mm512"
+            }
+            default {
+                error "Invalid packed vector size \"$arg1\""
+            }
+        }
+        switch -exact -- $arg2 {
+            c - int8_t - i8 {
+                set sfx epi8
+            }
+            uc - uint8_t - u8 {
+                set sfx epu8
+            }
+            s - int16_t - i16 {
+                set sfx epi16
+            }
+            us - uint16_t - u16 {
+                set sfx epu16
+            }
+            i - int32_t - i32 {
+                set sfx epi32
+            }
+            ui - uint32_t - u32 {
+                set sfx epu16
+            }
+            l - int64_t - i64 {
+                set sfx epi64
+            }
+            ul - uint64_t - u64 {
+                set sfx epu16
+            }
+            f - float - f32 - s {
+                set sfx ps
+            }
+            d - double - f64 {
+                set sfx pd
+            }
+            default {
+                error "Invalid element type \"$arg2\""
+            }
+        }
+        set func ${pfx}_${op}_${sfx}
+        if {[info exists db(instr,$func)]} {
+            return $func
+        }
+        if {[string match "ep*" $sfx]} {
+            set func ${pfx}_${op}_si${nbits}
+            if {[info exists db(instr,$func)]} {
+                return $func
+            }
+        }
+    }
+
+    proc get_define func {
+        variable db
+        if {![info exists db(instr,$func)]} {
+            error "Unknown intrinsic function \"$func\""
+        }
+        set instr $db(instr,$func)
+        regsub -all -- { +} $instr "" instr
+        regsub -all -- {\|+} $instr " || " instr
+        regsub -all -- {\&+} $instr " \\&\\& " instr
+        regsub -all -- {([A-Z][A-Z0-9_]*)} $instr "defined(__\\1__)" instr
+        return $instr
+    }
+
+    # This must be the last instruction.
+    __init__
+}
+
+#------------------------------------------------------------------------------
+#
+# Management of C code buffer with automatic indentation.
+#
+namespace eval ::vect::code {
+    # Namespace variable to store settings and state.
+    variable db
+    unset -nocomplain db
+    set db(buffer)  ""
+    set db(level)   0
+    set db(tabsize) 4; # spaces per indentation level
+    set db(indent)  ""
+
+    proc reset {} {
+        variable db
+        set db(buffer)  ""
+        set db(level)   0
+        set db(indent)  ""
+    }
+
+    # Push a code line or a comment block in the code buffer.
+    proc push args {
+        variable db
+        set code [join $args " "]
+        set temp [string trimright $code " "]; # Trim leading spaces
+        if {[string match "#*" $temp] || [string match "/\\**" $temp]} {
+            # This is a comment block or a preprocessor directive.
+            append db(buffer) $code "\n"
+        } else {
+            # Trim C++ style comment.
+            set i [string first "//" $temp]
+            if {$i >= 0} {
+                set temp [string range $temp 0 [expr {$i - 1}]]
+            }
+            set level $db(level)
+            if {[string index $temp 0] eq "\}"} {
+                # Decrease indentation level for this line if
+                # first non-space character is a closing brace.
+                incr level -1
+            }
+            if {$level < 0} {
+                set level 0
+            }
+            if {![info exists db(indent,$level)]} {
+                set n [expr {$level*$db(tabsize)}]
+                set db(indent,$level) [format "%${n}s" ""]
+            }
+            append db(buffer) $db(indent,$level) $code "\n"
+            if {$temp ne ""} {
+                # Count brace level.
+                set adj 0
+                set off 0
+                while {true} {
+                    set off [string first "\{" $temp $off]
+                    if {$off < 0} {
+                        break
+                    }
+                    incr adj
+                    incr off
+                }
+                set off 0
+                while {true} {
+                    set off [string first "\}" $temp $off]
+                    if {$off < 0} {
+                        break
+                    }
+                    incr adj -1
+                    incr off
+                }
+                if {$adj != 0} {
+                    incr db(level) $adj
+                    if {$db(level) < 0} {
+                        set db(level) 0
+                        error "Too many closing braces"
+                    }
+                }
+            }
+        }
+    }
+
+    # Print code to given channel and clear buffer.
+    proc print chn {
+        puts -nonewline $chn [take]
+    }
+
+    # Clear code buffer.
+    proc clear {} {
+        variable db
+        set db(buffer) ""
+    }
+
+    # Take code buffer.
+    proc take {} {
+        variable db
+        set code $db(buffer)
+        set db(buffer) ""
+        return $code
+    }
+}
+
+#------------------------------------------------------------------------------
+#
+# Generate C code for vectorized operations.
+#
 namespace eval ::vect {
     # Initial configuration.
     variable config
@@ -23,101 +356,6 @@ namespace eval ::vect {
     set config(style) "abbrev"; # "abbrev" or "canonic"
     set config(tabsize) 4; # spaces per indentation level
 
-    namespace eval code {
-        variable db
-        array unset db
-        set db(buffer)  ""
-        set db(level)   0
-        set db(tabsize) 4; # spaces per indentation level
-        set db(indent)  ""
-
-        proc reset {} {
-            variable db
-            set db(buffer)  ""
-            set db(level)   0
-            set db(indent)  ""
-        }
-
-        # Push a code line or a comment block in the code buffer.
-        proc push args {
-            variable db
-            set code [join $args " "]
-            set temp [string trimright $code " "]; # Trim leading spaces
-            if {[string match "#*" $temp] || [string match "/\\**" $temp]} {
-                # This is a comment block or
-                append db(buffer) $code "\n"
-            } else {
-                # Trim C++ style comment.
-                set i [string first "//" $temp]
-                if {$i >= 0} {
-                    set temp [string range $temp 0 [expr {$i - 1}]]
-                }
-                set level $db(level)
-                if {[string index $temp 0] eq "\}"} {
-                    # Decrease indentation level for this line if
-                    # first non-space character is a closing brace.
-                    incr level -1
-                }
-                if {$level < 0} {
-                    set level 0
-                }
-                if {![info exists db(indent,$level)]} {
-                    set n [expr {$level*$db(tabsize)}]
-                    set db(indent,$level) [format "%${n}s" ""]
-                }
-                append db(buffer) $db(indent,$level) $code "\n"
-                if {$temp ne ""} {
-                    # Count brace level.
-                    set adj 0
-                    set off 0
-                    while {true} {
-                        set off [string first "\{" $temp $off]
-                        if {$off < 0} {
-                            break
-                        }
-                        incr adj
-                        incr off
-                    }
-                    set off 0
-                    while {true} {
-                        set off [string first "\}" $temp $off]
-                        if {$off < 0} {
-                            break
-                        }
-                        incr adj -1
-                        incr off
-                    }
-                    if {$adj != 0} {
-                        incr db(level) $adj
-                        if {$db(level) < 0} {
-                            set db(level) 0
-                            error "Too many closing braces"
-                        }
-                    }
-                }
-            }
-        }
-
-        # Print code to given channel and clear buffer.
-        proc print chn {
-            puts -nonewline $chn [take]
-        }
-
-        # Clear code buffer.
-        proc clear {} {
-            variable db
-            set db(buffer) ""
-        }
-
-        # Take code buffer.
-        proc take {} {
-            variable db
-            set code $db(buffer)
-            set db(buffer) ""
-            return $code
-        }
-
-    }
 
     proc packed {op typ} {
         global std
@@ -247,6 +485,8 @@ namespace eval ::vect {
 
         # Vector types.
         set config(intrinsic_nbits) [lsort -increasing -integer {128 256 512}]
+        set config(intrinsic_nbits_decreasing) \
+            [lsort -decreasing -integer $config(intrinsic_nbits)]
         foreach eltype $config(eltypes) {
             foreach nbits $config(intrinsic_nbits) {
                 set size  [expr {$nbits/8}]
@@ -370,7 +610,8 @@ namespace eval ::vect {
                 append eol "(" [join $func_args ", "] ")"
             }
             set ctype $config(ctype,$sfx)
-            append code [format "%13s%-13s" "" ${ctype}:] " " ${name}_${sfx} $eol
+            append code [format "%13s%-13s" "" ${ctype}:] " " \
+                ${name}_${sfx} $eol
         }
         backslashify $code
     }
@@ -402,7 +643,8 @@ namespace eval ::vect {
         eval append var $args "\n"
     }
 
-    # Conversion of variables/field names to avoid issues with macro definitions.
+    # Conversion of variables/field names to avoid issues with macro
+    # definitions.
     proc protect_symbol name {
         variable config
         set pfx [string tolower $config(library,prefix)]
@@ -482,10 +724,16 @@ namespace eval ::vect {
         set headermacro "_${LIBPFX}VECT_H"
         set DOXYGEN_PARSING "${LIBPFX}DOXYGEN_PARSING"
 
+        # List of registers to try in decreasing size/efficiency order.
+        set registers {zmm ymm xmm}
+
         code::push "/*
  * ${headername} -
  *
  * Definitions for SIMD vectors in ${soft} library.
+ *
+ * *** WARNING *** This code has been generated by a script, do not edit
+ * *** WARNING *** directly.
  *
  *---------------------------------------------------------------------------
  *
@@ -498,6 +746,7 @@ namespace eval ::vect {
 
 #include <stdalign.h>
 #include <immintrin.h>
+#include <pvc-math.h>
 
 /**
  * @addtogroup vect Packed vector types and operations.
@@ -546,7 +795,7 @@ namespace eval ::vect {
             code::push "typedef union $ctype $ctype;"
             code::push "#ifndef ${DOXYGEN_PARSING}"
             code::push "union $ctype \{"
-            foreach nbits [lsort -decreasing -integer $config(intrinsic_nbits)] {
+            foreach nbits $config(intrinsic_nbits_decreasing) {
                 set p [expr {$size*8/$nbits}]
                 if {$p == 0} {
                     continue
@@ -570,13 +819,14 @@ namespace eval ::vect {
             code::print $chn
         }
 
+        #============================================================ SETZERO =
         code::push
         code::push "/**
- * @def pvc_zero(T)
+ * @def pvc_vzero(T)
  *
  * @brief Get a zero-filled vector of given type.
  */"
-        code::push [generic pvc_zero T "*(T)0" $suffixes {}]
+        code::push [generic pvc_vzero T "*(T)0" $suffixes {}]
 
         foreach ctype $ctypes {
             set nelem  $config(nelem,$ctype)
@@ -585,19 +835,23 @@ namespace eval ::vect {
             set size   $config(size,$ctype)
             code::push
             code::push "static inline"
-            code::push "$ctype pvc_zero_${type}(void)"
+            code::push "$ctype pvc_vzero_${type}(void)"
             code::push "\{"
-            code::push "return (${ctype})\{"
+            code::push     "return (${ctype})\{"
             set _if "#if"
-            foreach nbits [lsort -decreasing -integer $config(intrinsic_nbits)] {
+            foreach register $registers {
+                set nbits [intrinsics::get_nbits $register]
                 set p [expr {$size*8/$nbits}]
                 if {$p < 1} {
-                    continue
+                    continue; # Register is too large.
                 }
-                set level [intrinsic_packed_level $nbits $eltype]
-                set field [protect_symbol $config(register,$nbits)]
-                set func  [intrinsic_elementwise_function "setzero" $nbits $eltype]
-                code::push "$_if defined(__${level}__)"
+                set func [intrinsics::get_function "setzero" $register $eltype]
+                if {$func eq ""} {
+                    continue; # No intrinsic function for this operation.
+                }
+                set field [protect_symbol $register]
+                set define [intrinsics::get_define $func]
+                code::push "$_if $define"
                 if {$p == 1} {
                     code::push ".${field} = ${func}(),"
                 } else {
@@ -617,10 +871,12 @@ namespace eval ::vect {
             if {$_if ne "#if"} {
                 code::push "#endif"
             }
-            code::push "\};\n\}"
+            code::push     "\};"
+            code::push "\}"
         }
         code::print $chn
 
+        #======================================================== LOAD, LOADU =
         foreach op {load loadu} {
             if {$op eq "store"} {
                 set memory "aligned memory"
@@ -631,14 +887,14 @@ namespace eval ::vect {
             }
             code::push
             code::push "/**
- * @def pvc_${op}(T, addr)
+ * @def pvc_v${op}(T, addr)
  *
  * @brief Load packed values from ${memory}.
  *
  * Load packed values of type @a T from address @a addr which ${must} be
  * aligned.
  */"
-            code::push [generic pvc_${op} {T addr} "*(T)0" $suffixes addr]
+            code::push [generic pvc_v${op} {T addr} "*(T)0" $suffixes addr]
 
             foreach ctype $ctypes {
                 set nelem  $config(nelem,$ctype)
@@ -647,18 +903,23 @@ namespace eval ::vect {
                 set size   $config(size,$ctype)
                 code::push
                 code::push "static inline $ctype"
-                code::push "pvc_${op}_${type}($config(ctype,$eltype) const* addr)"
-                code::push "\{\n" "    return (${ctype})\{"
+                code::push "pvc_v${op}_${type}($config(ctype,$eltype) const* addr)"
+                code::push "\{"
+                code::push     "return (${ctype})\{"
                 set _if "#if"
-                foreach nbits [lsort -decreasing -integer $config(intrinsic_nbits)] {
+                foreach register $registers {
+                    set nbits [intrinsics::get_nbits $register]
                     set p [expr {$size*8/$nbits}]
                     if {$p < 1} {
-                        continue
+                        continue; # Register is too large.
                     }
-                    set level [intrinsic_packed_level $nbits $eltype]
-                    set field [protect_symbol $config(register,$nbits)]
-                    set func  [intrinsic_elementwise_function $op $nbits $eltype]
-                    code::push "$_if defined(__${level}__)"
+                    set func [intrinsics::get_function $op $register $eltype]
+                    if {$func eq ""} {
+                        continue; # No intrinsic function for this operation.
+                    }
+                    set field [protect_symbol $register]
+                    set define [intrinsics::get_define $func]
+                    code::push "$_if $define"
                     if {$p == 1} {
                         code::push ".${field} = ${func}(addr),"
                     } else {
@@ -679,22 +940,25 @@ namespace eval ::vect {
                 if {$_if ne "#if"} {
                     code::push "#endif"
                 }
-                code::push "\};\n\}"
+                code::push     "\};"
+                code::push "\}"
             }
             code::print $chn
         }
 
+        #============================================================== LOADP =
         code::push
         code::push "/**
- * @def pvc_loadp(T, n, addr)
+ * @def pvc_vloadp(T, n, addr)
  *
  * @brief Partial load of packed values from memory.
  *
  * Load @a n consecutive values of type @a T from address @a addr which may not be
  * aligned.
  */"
-        code::push [generic pvc_loadp {T n addr} "*(T)0" $suffixes {n addr}]
+        code::push [generic pvc_vloadp {T n addr} "*(T)0" $suffixes {n addr}]
 
+        #====================================================== STORE, STOREU =
         foreach op {store storeu} {
             if {$op eq "store"} {
                 set memory "aligned memory"
@@ -705,14 +969,14 @@ namespace eval ::vect {
             }
             code::push
             code::push "/**
- * @def pvc_${op}(addr, vect)
+ * @def pvc_v${op}(addr, vect)
  *
  * @brief Store packed values to ${memory}.
  *
  * Store packed values @a vect into memory at address @a addr which ${must} be
  * aligned.
  */"
-            code::push [generic pvc_${op} {addr vect} "(vect)" $suffixes {addr vect}]
+            code::push [generic pvc_v${op} {addr vect} "(vect)" $suffixes {addr vect}]
 
             foreach ctype $ctypes {
                 set nelem  $config(nelem,$ctype)
@@ -721,18 +985,22 @@ namespace eval ::vect {
                 set size   $config(size,$ctype)
                 code::push
                 code::push "static inline void"
-                code::push "pvc_${op}_${type}($config(ctype,$eltype)* addr, $ctype vect)"
+                code::push "pvc_v${op}_${type}($config(ctype,$eltype)* addr, $ctype vect)"
                 code::push "\{"
                 set _if "#if"
-                foreach nbits [lsort -decreasing -integer $config(intrinsic_nbits)] {
+                foreach register $registers {
+                    set nbits [intrinsics::get_nbits $register]
                     set p [expr {$size*8/$nbits}]
                     if {$p < 1} {
-                        continue
+                        continue; # Register is too large.
                     }
-                    set level [intrinsic_packed_level $nbits $eltype]
-                    set field [protect_symbol $config(register,$nbits)]
-                    set func  [intrinsic_elementwise_function $op $nbits $eltype]
-                    code::push "$_if defined(__${level}__)"
+                    set func [intrinsics::get_function $op $register $eltype]
+                    if {$func eq ""} {
+                        continue; # No intrinsic function for this operation.
+                    }
+                    set field [protect_symbol $register]
+                    set define [intrinsics::get_define $func]
+                    code::push "$_if $define"
                     if {$p == 1} {
                         code::push "${func}(addr, vect.${field}),"
                     } else {
@@ -758,16 +1026,87 @@ namespace eval ::vect {
             code::print $chn
        }
 
+        #============================================================= STOREP =
         code::push
         code::push "/**
- * @def pvc_storep(addr, n, vect)
+ * @def pvc_vstorep(addr, n, vect)
  *
  * @brief Partial store of packed values to memory.
  *
  * Store the @a n first values of @a vect to memory at address @a addr which may not be
  * aligned.
  */"
-        code::push [generic pvc_storep {addr n vect} "(vect)" $suffixes {addr n vect}]
+        code::push [generic pvc_vstorep {addr n vect} "(vect)" \
+                        $suffixes {addr n vect}]
+
+        #======================================= ADD, SUB, MUL, DIV, MIN, MAX =
+        foreach {op brief format} {
+            add "Add packed values"        {%s + %s}
+            sub "Subtract packed values"   {%s - %s}
+            mul "Multiply packed values"   {%s * %s}
+            div "Divide packed values"     {%s / %s}
+            min "Element-wise minimum"     {pvc_min(%s, %s)}
+            max "Element-wise maximum"     {pvc_max(%s, %s)}
+        } {
+            code::push
+            code::push "/**
+ * @def c = pvc_v${op}(a, b)
+ *
+ * @brief ${brief}.
+ */"
+            code::push [generic pvc_v${op} {a b} "(a)" $suffixes {a b}]
+
+            foreach ctype $ctypes {
+                set nelem  $config(nelem,$ctype)
+                set eltype $config(eltype,$ctype)
+                set type   $config(type,$ctype); # short type used as suffix
+                set size   $config(size,$ctype)
+                code::push
+                code::push "static inline $ctype"
+                code::push "pvc_v${op}_${type}($ctype a, $ctype b)"
+                code::push "\{"
+                code::push     "return (${ctype})\{"
+                set _if "#if"
+                foreach register $registers {
+                    set nbits [intrinsics::get_nbits $register]
+                    set p [expr {$size*8/$nbits}]
+                    if {$p < 1} {
+                        continue; # Register is too large.
+                    }
+                    set func [intrinsics::get_function $op $register $eltype]
+                    if {$func eq ""} {
+                        continue; # No intrinsic function for this operation.
+                    }
+                    set field [protect_symbol $register]
+                    set define [intrinsics::get_define $func]
+                    code::push "$_if $define"
+                    if {$p == 1} {
+                        code::push ".${field} = ${func}(a.${field}, b.${field}),"
+                    } else {
+                        for {set i 0} {$i < $p} {incr i} {
+                            set elem "${field}\[$i\]"
+                            code::push ".${elem} = ${func}(a.${elem}, b.${elem}),"
+                        }
+                    }
+                    set _if "#elif"
+                }
+                if {$_if ne "#if"} {
+                    code::push "#else"
+                }
+                set field [protect_symbol "val"]
+                for {set i 0} {$i < $nelem} {incr i} {
+                    set elem "${field}\[$i\]"
+                    set expr [format $format "a.${elem}" "b.${elem}"]
+                    code::push ".${elem} = ${expr},"
+                }
+                if {$_if ne "#if"} {
+                    code::push "#endif"
+                }
+                code::push     "\};"
+                code::push "\}"
+            }
+            code::print $chn
+       }
 
         code::push "/** @\} */
 
@@ -775,33 +1114,6 @@ namespace eval ::vect {
         code::print $chn
     }
 
-    set functions {
-        SETZERO __m128  _mm_setzero_ps    {} SSE
-        SETZERO __m128d _mm_setzero_pd    {} SSE2
-        SETZERO __m128i _mm_setzero_si128 {} SSE2
-
-        SETZERO __m256  _mm256_setzero_ps    {} AVX
-        SETZERO __m256d _mm256_setzero_pd    {} AVX
-        SETZERO __m256i _mm256_setzero_si256 {} AVX
-
-        SETZERO __m512  _mm512_setzero_ps    {} AVX512F
-        SETZERO __m512d _mm512_setzero_pd    {} AVX512F
-        SETZERO __m512i _mm512_setzero_si512 {} AVX512F
-
-        ADD __m128  _mm_add_ps    {__m128  __m128}  SSE
-        ADD __m128d _mm_add_pd    {__m128d __m128d} SSE2
-        ADD __m128i _mm_add_si128 {__m128i __m128i} SSE2
-
-        ADD __m256  _mm256_add_ps    {__m256  __m256}  AVX
-        ADD __m256d _mm256_add_pd    {__m256d __m256d} AVX
-        ADD __m256i _mm256_add_si256 {__m256i __m256i} AVX
-
-        ADD __m512  _mm512_add_ps    {__m512  __m512}  AVX512F
-        ADD __m512d _mm512_add_pd    {__m512d __m512d} AVX512F
-        ADD __m512i _mm512_add_si512 {__m512i __m512i} AVX512F
-
-
-    }
 }
 
 if {! $tcl_interactive} {
