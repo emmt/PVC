@@ -47,8 +47,33 @@ If appropriate, `-march=znver2` with GCC (and `-O3 -ffast-math`) is better than
 good as CLang with `-O3 -ffast-math -march=native` (adding `-funroll-loops`
 and/or `-ftree-vectorize` does not improve that for GCC).
 
+In GCC, you have to use `-march=$cpu` to generate code for the specified
+processor (use `-mtune=$cpu` to have code optimzed for $cpu but which may still
+run on other cpu's).  The option `-march=$cpu` also trigger all `-m$instr`
+options (where `$instr` denotes specific intruction set, like `sse2`).
+Specifying options `-m$instr` is not sufficient, the target CPU must support
+these instructions.  To make sure that a given subset of instructions is used,
+my understanding is that one has to specify:
+
+```.sh
+gcc -march=$cpu -m$use1 ... -m$useM -mno-$skip1 ... -mno-$skipN
+```
+
+where `$use1` ... `$useM` are instructions to use, `$cpu` is a processor that
+supports at least these instructions and `$skip1` ... `$skipN` are instructions
+to not use (even though they may be available in `$cpu`).  This may be tedious,
+another possibility may be to use the `-mtune-ctrl=$features` option to turn
+on/off features.
+
+Other GCC options to consider: `-mvzeroupper`, `-mprefer-avx128`,
+`-mprefer-vector-width=$nbits`, etc.
+
 
 ## Using Intrinsics
+
+See
+- https://scc.ustc.edu.cn/zlsc/sugon/intel/compiler_c/main_cls/index.htm
+- https://software.intel.com/sites/landingpage/IntrinsicsGuide/
 
 From Agner Fog's manual:
 
