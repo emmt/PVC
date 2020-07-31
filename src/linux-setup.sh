@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Set Linux system parameters for running programs.
+# Tune Linux system parameters for running programs.
 #
 # See https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/doc/linuxtips.md
 #

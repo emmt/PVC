@@ -65,6 +65,10 @@ $(STATIC_LIBRARY): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $(OBJS)
 	ranlib $@
 
+$(srcdir)/pvc-vect.h: $(srcdir)/gen-vect-hdr.tcl
+	test -e "$@" && mv -f "$@" "$@.bak"
+	tclsh "$<" >"$@"
+
 init.o: $(srcdir)/init.cpp $(srcdir)/pvc.h
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(PTHREAD_FLAGS) -c "$<"
 

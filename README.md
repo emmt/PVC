@@ -21,7 +21,9 @@ suitable header files:
   functions that evaluate their arguments only once (`pvc_min`,
   `pvc_max`, `pvc_clamp`);
 - [`<pvc-meta.h>`](./src/pvc-meta.h) for meta-programming with the C
-  pre-processor.
+  pre-processor;
+- [`<pvc-vect.h>`](./src/pvc-vect.h) for helper types and macros to
+  code with intrinsic functions and vectors of packed values.
 
 The vectorized functions provided by PVC require a C++ compiler
 implementing C++17 standard (like `gcc -std=c++17`) to be built but is
