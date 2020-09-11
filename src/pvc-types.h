@@ -25,22 +25,20 @@
  *
  * Basic types are the 15 basic numerical types implemented by the C
  * language: `bool`, `char`, `signed char`, `unsigned char`, `short`,
- * `unsigned short`, `int`, `unsigned int`, `long`, `unsigned long`,
- * `long long`, `unsigned long long`, `float`, `double` and `long
- * double`.
+ * `unsigned short`, `int`, `unsigned int`, `long`, `unsigned long`, `long
+ * long`, `unsigned long long`, `float`, `double` and `long double`.
  *
- * In standard C, `char`, `signed char` and `unsigned char` are
- * distinct types.  For other integer types `signed` is implicit if
- * neither `signed` nor `unsigned` is specified.
+ * In standard C, `char`, `signed char` and `unsigned char` are distinct
+ * types.  For other integer types `signed` is implicit if neither `signed`
+ * nor `unsigned` is specified.
  *
- * To each basic type, PVC associate a unique numerical identifier
- * (see PVC_TYPE_ID()) and a unique suffix (see PVC_SUFFIX_TO_TYPE())
- * which can both be determined at compile-time.  These can be used
- * for simple type-oriented meta-programming.  For instance, the
- * identifier may be used to build a type-indexed table while the
- * suffix may be used to name type-specific functions and to allow for
- * simple type dispatching (like the functions in `<math.h>` since
- * C99).
+ * To each basic type, PVC associate a unique numerical identifier (see
+ * PVC_TYPE_ID()) and a unique suffix (see PVC_SUFFIX_TO_TYPE()) which can
+ * both be determined at compile-time.  These can be used for simple
+ * type-oriented meta-programming.  For instance, the identifier may be
+ * used to build a type-indexed table while the suffix may be used to name
+ * type-specific functions and to allow for simple type dispatching (like
+ * the functions in `<math.h>` since C99).
  *
  * @{
  */
@@ -79,19 +77,19 @@
  * |  `i64` | `int64_t`            |
  * |  `u64` | `uint64_t`           |
  *
- * Note that `char`, `signed char` and `unsigned char` are distinct
- * types in C.  Macro expansion is performed on argument @a sfx, call
+ * Note that `char`, `signed char` and `unsigned char` are distinct types
+ * in C.  Macro expansion is performed on argument @a sfx, call
  * `_PVC_SUFFIX_TO_TYPE_(sfx)` instead if you do not want to expand
  * argument.
  *
  * Other suffixes, say `x`, may be inserted by defining a macro
  * `_PVC_SUFFIX_TO_TYPE_x` which expands to the corresponding C type.
  */
-/* The trick is to define macro `_PVC_SUFFIX_TO_TYPE_(sfx)` such that
-   it uses 2 tokens `_PVC_SUFFIX_TO_TYPE_` which is not expanded as it
-   is the name of the macro and `sfx` which is just replaced by its
-   value.  In that way there are less risks that macro expansion yield
-   unpredictable result (the compiler will complain if the macor is
+/* The trick is to define macro `_PVC_SUFFIX_TO_TYPE_(sfx)` such that it
+   uses 2 tokens `_PVC_SUFFIX_TO_TYPE_` which is not expanded as it is the
+   name of the macro itself and `sfx` which is just replaced by its value.
+   In that way, there are less risks that macro expansion yields
+   unpredictable result (the compiler will complain if the macro is
    redefined). */
 #define PVC_SUFFIX_TO_TYPE(sfx)  _PVC_SUFFIX_TO_TYPE_(sfx)
 #ifndef _PVC_DOXYGEN_PARSING
@@ -154,12 +152,12 @@
 #ifdef _PVC_DOXYGEN_PARSING
 #  define PVC_TYPE_ID(T) ...
 #else /* _PVC_DOXYGEN_PARSING not defined */
-/* To discard any type qualifiers such as `const or `volatile`, the
-   trick used in `PVC_TYPE_ID` and similar macros using type generic
-   expression is to use the type of dereferencing a null pointer to
-   the considered type.  This is allowed because the controlling
-   expression in a type generic construction is not evaluated by the
-   compiler, only its type is relevant. */
+/* To discard any type qualifiers such as `const or `volatile`, the trick
+   used in `PVC_TYPE_ID` and similar macros using type generic expression
+   is to use the type of dereferencing a null pointer to the considered
+   type.  This is allowed because the controlling expression in a type
+   generic construction is not evaluated by the compiler, only its type is
+   relevant. */
 #  define PVC_TYPE_ID(T)                                                \
     _Generic(*(T*)0,                                                    \
              bool:               PVC_TYPE_ID_BOOL,                      \
@@ -266,8 +264,8 @@
  *
  * This macro expands to a boolean compile-time constant expression
  * indicating whether its argument is a signed numerical type.  This macro
- * should always compile, yielding false for unsigned numerical types or
- * non-numerical type.
+ * should always compile, yielding false for an unsigned numerical type or
+ * a non-numerical type.
  *
  * @see PVC_IS_UNSIGNED, PVC_IS_INTEGER, PVC_IS_FLOATINGPOINT.
  */
@@ -278,8 +276,8 @@
  *
  * This macro expands to a boolean compile-time constant expression
  * indicating whether its argument is an unsigned numerical type.  This
- * macro should always compile, yielding false for signed numerical types
- * and non-numerical types.
+ * macro should always compile, yielding false for a signed numerical type
+ * and a non-numerical type.
  *
  * @see PVC_IS_SIGNED, PVC_IS_INTEGER, PVC_IS_FLOATINGPOINT.
  */
@@ -323,8 +321,8 @@
  *
  * This macro expands to a boolean compile-time constant expression
  * indicating whether its argument is an integer numerical type.  This
- * macro should always compile, yielding false for non-integer numerical
- * types or non-numerical type.
+ * macro should always compile, yielding false for a non-integer numerical
+ * type or a non-numerical type.
  *
  * @see PVC_IS_UNSIGNED, PVC_IS_SIGNED, PVC_IS_FLOATINGPOINT.
  */
@@ -335,8 +333,8 @@
  *
  * This macro expands to a boolean compile-time constant expression
  * indicating whether its argument is a floating-point type.  This macro
- * should always compile, yielding false for non floating-point numerical
- * types or non-numerical type.
+ * should always compile, yielding false for a non floating-point numerical
+ * type or a non-numerical type.
  *
  * @see PVC_IS_UNSIGNED, PVC_IS_SIGNED, PVC_IS_INTEGER.
  */
@@ -381,10 +379,9 @@
  * indicating whether qualified types @a T and @a Q are the same.
  *
  * Note that type equality is actually checked for the types of the
- * pointers `(T*)0` and `(Q*)0`.  As a consequece, type qualifiers
- * such as `const` and `volatile` are significant.  Use
- * PVC_UNQUALIFIED_TYPE_IS() if you want to check the unqualified
- * type.
+ * pointers `(T*)0` and `(Q*)0`.  As a consequece, type qualifiers such as
+ * `const` and `volatile` are significant.  Use PVC_UNQUALIFIED_TYPE_IS()
+ * if you want to check the unqualified type.
  *
  * @see PVC_IS_FLOATINGPOINT, PVC_IS_INTEGER, PVC_UNQUALIFIED_TYPE_IS.
  */
@@ -396,9 +393,8 @@
  * @brief Checking for unqualifed type equality.
  *
  * This macro expands to a boolean compile-time constant expression
- * indicating whether unqualified type @a T is the same as @a B.
- * Argument @a T may have type qualifiers, argument @a U should be
- * unqualified.
+ * indicating whether unqualified type @a T is the same as @a U.  Argument
+ * @a T may have type qualifiers, argument @a U must be unqualified.
  *
  * Use PVC_QUALIFIED_TYPE_IS() if you want to check the qualified type.
  *
@@ -462,14 +458,14 @@
  *
  * @see PVC_FLT_INF, PVC_DBL_INF.
  */
-/* Since C99, the macro `INFINITY`, defined in `<math.h>`, expands to
-   a constant expression of type float which evaluates to positive or
+/* Since C99, the macro `INFINITY`, defined in `<math.h>`, expands to a
+   constant expression of type float which evaluates to positive or
    unsigned infinity.
 
-   Since C99, the macros `HUGE_VALF`, `HUGE_VAL` and `HUGE_VALL`,
-   defined in `<math.h>`, expand to positive floating point constant
-   expressions which compare equal to the values returned by
-   floating-point functions and operators in case of overflow.
+   Since C99, the macros `HUGE_VALF`, `HUGE_VAL` and `HUGE_VALL`, defined
+   in `<math.h>`, expand to positive floating point constant expressions
+   which compare equal to the values returned by floating-point functions
+   and operators in case of overflow.
 
    See <https://en.cppreference.com/w/c>.
  */
@@ -506,9 +502,8 @@
  *
  * @brief Single precision quiet not-a-number.
  *
- * If defined, this macro expands to a compile-time constant
- * expression of type `float` which evaluates to a quiet not-a-number
- * (QNaN).
+ * If defined, this macro expands to a compile-time constant expression of
+ * type `float` which evaluates to a quiet not-a-number (QNaN).
  *
  * @see PVC_DBL_NAN, PVC_LDBL_NAN.
  */
@@ -517,9 +512,8 @@
  *
  * @brief Double precision quiet not-a-number.
  *
- * If defined, this macro expands to a compile-time constant
- * expression of type `double` which evaluates to a quiet not-a-number
- * (QNaN).
+ * If defined, this macro expands to a compile-time constant expression of
+ * type `double` which evaluates to a quiet not-a-number (QNaN).
  *
  * @see PVC_FLT_NAN, PVC_LDBL_NAN.
  */
@@ -528,9 +522,8 @@
  *
  * @brief Quadruple precision quiet not-a-number.
  *
- * If defined, this macro expands to a compile-time constant
- * expression of type `long double` which evaluates to a quiet
- * not-a-number (QNaN).
+ * If defined, this macro expands to a compile-time constant expression of
+ * type `long double` which evaluates to a quiet not-a-number (QNaN).
  *
  * @see PVC_FLT_NAN, PVC_DBL_NAN.
  */
@@ -539,10 +532,10 @@
 #  define PVC_DBL_NAN  ...
 #  define PVC_LDBL_NAN ...
 #else /* _PVC_DOXYGEN_PARSING not defined */
-/* Since C99, the macro `NAN`, defined in `<math.h>`, expands a to
-   constant expression of type float which evaluates to a quiet
-   not-a-number (QNaN) value.  If the implementation does not support
-   QNaNs, this macro constant is not defined.
+/* Since C99, the macro `NAN`, defined in `<math.h>`, expands a to constant
+   expression of type float which evaluates to a quiet not-a-number (QNaN)
+   value.  If the implementation does not support QNaNs, this macro
+   constant is not defined.
 
    See <https://en.cppreference.com/w/c>.
  */
@@ -562,9 +555,9 @@
  *
  * @brief Minimum value of given type.
  *
- * This macro expands to a compile-time constant expression of type
- * @a T which evaluates to the minimal representable value for type
- * @a T, that is minus infinity for floating-point types.
+ * This macro expands to a compile-time constant expression of type @a T
+ * which evaluates to the minimal representable value for type @a T, that
+ * is minus infinity for floating-point types.
  *
  * @see PVC_TYPE_MAX.
  */
@@ -573,9 +566,9 @@
  *
  * @brief Maximum value of given type.
  *
- * This macro expands to a compile-time constant expression of type
- * @a T which evaluates to the maximal representable value for type
- * @a T, that is plus infinity for floating-point types.
+ * This macro expands to a compile-time constant expression of type @a T
+ * which evaluates to the maximal representable value for type @a T, that
+ * is plus infinity for floating-point types.
  *
  * @see PVC_TYPE_MIN.
  */
