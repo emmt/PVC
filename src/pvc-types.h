@@ -67,7 +67,7 @@
  * |  `ull` | `unsigned long long` |
  * |    `f` | `float`              |
  * |    `d` | `double`             |
- * |    `q` | `long double`        |
+ * |   `ld` | `long double`        |
  * |   `i8` | `int8_t`             |
  * |   `u8` | `uint8_t`            |
  * |  `i16` | `int16_t`            |
@@ -108,7 +108,7 @@
 #  define _PVC_SUFFIX_TO_TYPE_ull   unsigned long long
 #  define _PVC_SUFFIX_TO_TYPE_f     float
 #  define _PVC_SUFFIX_TO_TYPE_d     double
-#  define _PVC_SUFFIX_TO_TYPE_q     long double
+#  define _PVC_SUFFIX_TO_TYPE_ld    long double
 #  define _PVC_SUFFIX_TO_TYPE_i8    int8_t
 #  define _PVC_SUFFIX_TO_TYPE_u8    uint8_t
 #  define _PVC_SUFFIX_TO_TYPE_i16   int16_t
@@ -124,10 +124,10 @@
  *
  * @brief Unique basic type identifier.
  *
- * This macro expands to an integer compile-time constant expression
- * with the unique identifier of the basic type @a T or
- * `PVC_TYPE_ID_OTHER` (that is 0) if @a T is not a C basic type.
- * Type qualifiers are irrelevant.
+ * This macro expands to an integer compile-time constant expression with
+ * the unique identifier of the basic type @a T or `PVC_TYPE_ID_OTHER`
+ * (that is 0) if @a T is not a C basic type.  Type qualifiers are
+ * irrelevant.
  *
  * | C Type               | Macro                                                   | Value |
  * |:---------------------|:--------------------------------------------------------|------:|
@@ -379,7 +379,7 @@
  * indicating whether qualified types @a T and @a Q are the same.
  *
  * Note that type equality is actually checked for the types of the
- * pointers `(T*)0` and `(Q*)0`.  As a consequece, type qualifiers such as
+ * pointers `(T*)0` and `(Q*)0`.  As a consequence, type qualifiers such as
  * `const` and `volatile` are significant.  Use PVC_UNQUALIFIED_TYPE_IS()
  * if you want to check the unqualified type.
  *

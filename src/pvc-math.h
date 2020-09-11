@@ -47,7 +47,7 @@
              unsigned long long: pfx##_ull,     \
              float:              pfx##_f,       \
              double:             pfx##_d,       \
-             long double:        pfx##_q)(x)
+             long double:        pfx##_ld)(x)
 
 #define _PVC_GENERIC_MATH_2(pfx, x, y)          \
     _Generic((x) + (y),                         \
@@ -65,7 +65,7 @@
              unsigned long long: pfx##_ull,     \
              float:              pfx##_f,       \
              double:             pfx##_d,       \
-             long double:        pfx##_q)(x, y)
+             long double:        pfx##_ld)(x, y)
 
 #define _PVC_GENERIC_MATH_3(pfx, x, y, z)               \
     _Generic((x) + (y) + (z),                           \
@@ -83,7 +83,7 @@
              unsigned long long: pfx##_ull,             \
              float:              pfx##_f,               \
              double:             pfx##_d,               \
-             long double:        pfx##_q)(x, y, z)
+             long double:        pfx##_ld)(x, y, z)
 
 #endif /* _PVC_DOXYGEN_PARSING */
 
@@ -94,9 +94,9 @@
  *
  * The macro `pvc_abs` yields the absolute value of its arguments.
  *
- * This macro expands as inlined code which is intended to be as fast
- * as possible.  Arguments are evaluated once and must have numerical
- * values.  NaN are ignored and integer overflows may occur.
+ * This macro expands as inlined code which is intended to be as fast as
+ * possible.  Arguments are evaluated once and must have numerical values.
+ * NaN are ignored and integer overflows may occur.
  *
  * @see pvc_min, pvc_max.
  */
@@ -150,7 +150,7 @@ _PVC_STATIC_INLINE_UNSIGNED(ull)
 
 #define _pvc_abs_f  fabsf
 #define _pvc_abs_d  fabs
-#define _pvc_abs_q  fabsl
+#define _pvc_abs_ld fabsl
 
 /* Undefine temporary private macros. */
 #undef  _PVC_STATIC_INLINE_SIGNED
@@ -167,9 +167,9 @@ _PVC_STATIC_INLINE_UNSIGNED(ull)
  *
  * The macro `pvc_min` yields the smallest value of its arguments.
  *
- * This macro expands as inlined code which is intended to be as fast
- * as possible.  Arguments are evaluated once and must have numerical
- * values.  NaN are ignored.
+ * This macro expands as inlined code which is intended to be as fast as
+ * possible.  Arguments are evaluated once and must have numerical values.
+ * NaN are ignored.
  *
  * @see pvc_max, pvc_clamp.
  */
@@ -211,7 +211,7 @@ _PVC_STATIC_INLINE(ll)
 _PVC_STATIC_INLINE(ull)
 _PVC_STATIC_INLINE(f)
 _PVC_STATIC_INLINE(d)
-_PVC_STATIC_INLINE(q)
+_PVC_STATIC_INLINE(ld)
 
 /* Undefine temporary private macros. */
 #undef  _PVC_STATIC_INLINE
@@ -226,9 +226,9 @@ _PVC_STATIC_INLINE(q)
  *
  * The macro `pvc_max` yields the largest value of its arguments.
  *
- * This macro expands as inlined code which is intended to be as fast
- * as possible.  Arguments are evaluated once and must have numerical
- * values.  NaN are ignored.
+ * This macro expands as inlined code which is intended to be as fast as
+ * possible.  Arguments are evaluated once and must have numerical values.
+ * NaN are ignored.
  *
  * @see pvc_min, pvc_clamp.
  */
@@ -269,7 +269,7 @@ _PVC_STATIC_INLINE(ll)
 _PVC_STATIC_INLINE(ull)
 _PVC_STATIC_INLINE(f)
 _PVC_STATIC_INLINE(d)
-_PVC_STATIC_INLINE(q)
+_PVC_STATIC_INLINE(ld)
 
 /* Undefine temporary private macros. */
 #undef  _PVC_STATIC_INLINE
@@ -285,10 +285,10 @@ _PVC_STATIC_INLINE(q)
  * This macro yields `min(max(x, lo), hi)` that is `lo` if `x ≤ lo`,
  * `hi` if `x ≥ hi` and `x` otherwise.
  *
- * This macro expands as inlined code which is intended to be as fast
- * as possible.  Arguments are evaluated once and must have numerical
- * values.  Arguments are not checked (@a hi should be greater or
- * equal @a lo) and NaN may not propagate properly.
+ * This macro expands as inlined code which is intended to be as fast as
+ * possible.  Arguments are evaluated once and must have numerical values.
+ * Arguments are not checked (@a hi should be greater or equal @a lo) and
+ * NaN may not propagate properly.
  *
  * @see pvc_min, pvc_max.
  */
@@ -333,7 +333,7 @@ _PVC_STATIC_INLINE(ll)
 _PVC_STATIC_INLINE(ull)
 _PVC_STATIC_INLINE(f)
 _PVC_STATIC_INLINE(d)
-_PVC_STATIC_INLINE(q)
+_PVC_STATIC_INLINE(ld)
 
 /* Undefine temporary private macros. */
 #undef  _PVC_STATIC_INLINE
