@@ -24,7 +24,7 @@
  * @def PVC_NARGS(...)
  *
  * Yield the number of variadic arguments in `...`.  A maximum of 20
- * arguments is supported.
+ * arguments is supported.  Does not work for zero arguments.
  */
 #define PVC_NARGS(...) \
     PVC_GET_21(__VA_ARGS__,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
