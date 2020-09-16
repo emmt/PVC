@@ -55,7 +55,7 @@
  * @see PVC_STRINGIFY, PVC_COMPILER_VERSION.
  */
 #define PVC_VERSION_STRING(major,minor,micro) \
-  PVC_STRINGIFY(major)"."PVC_STRINGIFY(minor)"."PVC_STRINGIFY(micro)
+  PVC_STRINGIFY(major) "." PVC_STRINGIFY(minor) "." PVC_STRINGIFY(micro)
 
 /**
  * @def PVC_COMPILER_NAME
