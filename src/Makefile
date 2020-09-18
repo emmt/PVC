@@ -142,4 +142,13 @@ run-tests:
 	make TEST_ID=gcc-O3-fast-math-unroll-sse4   run-preprocessing-tests
 	make TEST_ID=gcc-O3-fast-math-unroll-avx2   run-preprocessing-tests
 
+run-types-tests: types-tests types-tests++
+	./types-tests
+	./types-tests++
+
+types-tests: $(srcdir)/types-tests.c $(srcdir)/pvc-types.h
+	$(CC) -O -Wall -I. $< -o $@
+types-tests++: $(srcdir)/types-tests.cpp $(srcdir)/types-tests.c $(srcdir)/pvc-types.h
+	$(CXX) -O -Wall -I. $< -o $@
+
 .PHONY: clean all preprocessing-tests run-preprocessing-tests
